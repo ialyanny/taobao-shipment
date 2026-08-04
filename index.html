@@ -216,6 +216,19 @@
     .batch-add select { flex: 1 1 auto; width: auto; padding: 8px 10px; font-size: 13px; }
     .mono { font-family: Consolas, "Courier New", monospace; }
 
+    .sync-status {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 10px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    .sync-status.waiting { background: #fef7e0; color: var(--orange); }
+    .sync-status.online { background: #e6f4ea; color: var(--green); }
+    .sync-status.offline { background: #fdedec; color: var(--error); }
+
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
       background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px;
@@ -256,7 +269,7 @@
     <div class="container">
       <header>
         <h1>淘寶集運管理</h1>
-        <p class="subtitle">輸入單號、品項、金額，統計每個人的集運包裹；勾選建立集運批次，到貨後用列印單核對。</p>
+        <p class="subtitle">輸入單號、品項、金額，統計每個人的集運包裹；勾選建立集運批次，到貨後用列印單核對。<span id="syncStatus" class="sync-status waiting">連線中…</span></p>
         <nav class="tabs">
           <button type="button" class="tab-btn active" data-tab="register">登錄包裹</button>
           <button type="button" class="tab-btn" data-tab="records">包裹總覽</button>
@@ -335,7 +348,7 @@
         </div>
         <div class="card">
           <h2 style="font-size:20px;margin-bottom:8px;">資料備份</h2>
-          <p class="hint">資料只存在於這個瀏覽器。建議更換裝置或清理瀏覽器前，先匯出備份。</p>
+          <p class="hint">資料已同步到共享資料庫，所有使用者即時看到相同內容。仍建議定期匯出備份。</p>
           <div class="btn-row">
             <button type="button" class="btn-submit" id="btnBackup">匯出備份 JSON</button>
             <label class="btn-clear" style="display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;padding:12px 24px;font-size:15px;font-weight:500;cursor:pointer;color:var(--primary-dark);">
@@ -359,18 +372,22 @@
   <div class="toast" id="toast"></div>
   <div id="printArea"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
-      var RECORDS_KEY = 'ts_records_v2';
-      var BATCHES_KEY = 'ts_batches_v2';
+      var SUPABASE_URL = 'https://nutkocotbncqxgvjkfxi.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51dGtvY290Ym5jcXhndmprZnhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTcwMjcsImV4cCI6MjEwMTQzMzAyN30.yfvXV2dvYhS8cTLgyir-ddaVb5oqbYIDyjngINVccfE';
+      var CACHE_KEY = 'ts_sync_cache_v1';
       var NAMES = ['俊賢', '榮吉', '小惠', 'Hebe', '弟', '妹', '育源', '武昌', '曉君'];
       var SEED_RECORDS = [{"time":1784319875000,"name":"弟","orderNo":"435272535982156","item":"褲子","amount":"0"},{"time":1783189726000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠背","amount":"47.62"},{"time":1783550938000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠","amount":"47.62"},{"time":1784296380000,"name":"榮吉","orderNo":"9822789936997","item":"衣物除味噴霧","amount":"0"},{"time":1782723847000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783292462000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"1.89元"},{"time":1783337040000,"name":"榮吉","orderNo":"773430298305689","item":"眼線筆","amount":"0"},{"time":1783873464000,"name":"榮吉","orderNo":"435266561020411","item":"67W快充線","amount":"0"},{"time":1783952041000,"name":"榮吉","orderNo":"JT3170121905771","item":"測電筆","amount":"0"},{"time":1783897780000,"name":"俊賢","orderNo":"YT7631445333130","item":"收納盒","amount":"2.01元"},{"time":1784207750000,"name":"榮吉","orderNo":"9822779604858","item":"定妝噴霧","amount":"0"},{"time":1782228397000,"name":"俊賢","orderNo":"773426545571792","item":"陶瓷蒸籠","amount":"24.3元"},{"time":1782235638000,"name":"俊賢","orderNo":"79014009539615","item":"冰霸杯","amount":"18.82"},{"time":1782286450000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1782286492000,"name":"俊賢","orderNo":"YT8879717510828","item":"轉接頭","amount":"13.5"},{"time":1782338541000,"name":"弟","orderNo":"773427544569349","item":"保護貼","amount":"14.35"},{"time":1784484941000,"name":"榮吉","orderNo":"435276290900047","item":"吃瓜神器","amount":"0"},{"time":1782513459000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"5元"},{"time":1783189778000,"name":"俊賢","orderNo":"73600478536863","item":"手機殼","amount":"100.28"},{"time":1783189941000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1783189819000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783189886000,"name":"俊賢","orderNo":"YT8880636814779","item":"雨傘","amount":"11.06"},{"time":1784319898000,"name":"弟","orderNo":"YT7633193521247","item":"褲子1","amount":"0"},{"time":1784319956000,"name":"弟","orderNo":"773431765309218","item":"玻璃貼","amount":"0"},{"time":1784320053000,"name":"弟","orderNo":"773431758134690","item":"玻璃貼1","amount":"0"},{"time":1784320081000,"name":"弟","orderNo":"YT7632896479356","item":"充電器","amount":"0"},{"time":1784320106000,"name":"弟","orderNo":"79018899130936","item":"充電器1","amount":"0"},{"time":1784320129000,"name":"弟","orderNo":"YT7632898574570","item":"充電線","amount":"0"},{"time":1784737218000,"name":"Hebe","orderNo":"YT0057803917151","item":"衣服","amount":"100"},{"time":1785111442000,"name":"榮吉","orderNo":"JT3171664587193","item":"電競指套","amount":"0"},{"time":1785278413000,"name":"Hebe","orderNo":"770335249124628","item":"衣服","amount":"100"},{"time":1785332469000,"name":"俊賢","orderNo":"9822835052492","item":"香薰","amount":"0.99"},{"time":1785332515000,"name":"俊賢","orderNo":"79020255221536","item":"藍芽接收器","amount":"11.04"},{"time":1785332590000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785332657000,"name":"俊賢","orderNo":"JT3170599843390","item":"耳機轉接線","amount":"7.69"},{"time":1783884033000,"name":"榮吉","orderNo":"JT3170097566028","item":"去污膏","amount":"0"},{"time":1785481461000,"name":"弟","orderNo":"SF5112962902449","item":"保護套","amount":"0"},{"time":1785481487000,"name":"弟","orderNo":"79021580267193","item":"充電線","amount":"0"},{"time":1785665628000,"name":"榮吉","orderNo":"79022871145996","item":"拼豆補充包","amount":"0"},{"time":1785667688000,"name":"榮吉","orderNo":"773434710903862","item":"藍芽耳機","amount":"0"},{"time":1785695129000,"name":"榮吉","orderNo":"9822899066964","item":"耳塞","amount":"0"},{"time":1785695178000,"name":"榮吉","orderNo":"435295643351172","item":"耳洞清潔器","amount":"0"},{"time":1784635685000,"name":"榮吉","orderNo":"JT3171090028762","item":"外出背包","amount":"0"},{"time":1784660978000,"name":"榮吉","orderNo":"9822818624350","item":"香氛","amount":"0"},{"time":1785749782000,"name":"俊賢","orderNo":"79127598165487","item":"頭盔耳機","amount":"57.34"},{"time":1785749845000,"name":"俊賢","orderNo":"JT5506335502948","item":"麥克風","amount":"5.4"},{"time":1785749959000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785750016000,"name":"俊賢","orderNo":"79020255221536","item":"5.3音頻接收器","amount":"11.04"},{"time":1785760133000,"name":"Hebe","orderNo":"79022917754324","item":"衣服","amount":"100"},{"time":1785777651000,"name":"榮吉","orderNo":"773434828480463","item":"美甲磁鐵棒","amount":"0"},{"time":1785777702000,"name":"榮吉","orderNo":"9822904532251","item":"拼豆筆","amount":"0"},{"time":1785795133000,"name":"俊賢","orderNo":"JT5511428018522","item":"雨衣","amount":"11.97"},{"time":1785795199000,"name":"俊賢","orderNo":"JT5511585053529","item":"外套","amount":"13.8"},{"time":1785795261000,"name":"俊賢","orderNo":"JT5511614179773","item":"藍芽接收器","amount":"24.04"},{"time":1785835977000,"name":"榮吉","orderNo":"YT7636433267767","item":"拼豆針","amount":"0"},{"time":1785836009000,"name":"榮吉","orderNo":"773434948184628","item":"刮鬍刀","amount":"0"},{"time":1785837467000,"name":"榮吉","orderNo":"9822909716382","item":"圖釘1","amount":"0"},{"time":1785837541000,"name":"榮吉","orderNo":"773434976323581","item":"圖釘2","amount":"0"}];
 
-      var records = loadRecords();
-      var batches = loadBatches();
+      var sb = null;
+      var records = [];
+      var batches = [];
       var currentTab = 'register';
       var currentFilter = 'all';
       var selected = {};
+      var syncTimer = 0;
 
       function $(id) { return document.getElementById(id); }
       function esc(s) {
@@ -389,41 +406,118 @@
       }
       function round2(n) { return Math.round(n * 100) / 100; }
 
-      function loadRecords() {
+      function recRow(r) {
+        return { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived };
+      }
+      function recFrom(row) {
+        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived };
+      }
+      function batchRow(b) { return { id: b.id, name: b.name, created_at: b.createdAt }; }
+      function batchFrom(row) { return { id: row.id, name: row.name, createdAt: row.created_at }; }
+
+      function cacheSave() {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ records: records, batches: batches })); } catch (e) {}
+      }
+      function cacheLoad() {
         try {
-          var raw = localStorage.getItem(RECORDS_KEY);
-          if (raw) {
-            var arr = JSON.parse(raw);
-            if (Array.isArray(arr)) return arr;
-          }
-        } catch (e) {}
-        if (SEED_RECORDS.length) {
-          var seeded = SEED_RECORDS.map(function (r, i) {
-            return {
-              id: 's' + i,
-              time: r.time,
-              name: r.name,
-              orderNo: String(r.orderNo),
-              item: r.item,
-              amount: String(r.amount),
-              batchId: null,
-              arrived: false
-            };
-          });
-          localStorage.setItem(RECORDS_KEY, JSON.stringify(seeded));
-          return seeded;
+          var raw = localStorage.getItem(CACHE_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+      }
+      function seedMap(r, i) {
+        return { id: 's' + i, time: r.time, name: r.name, orderNo: String(r.orderNo), item: r.item, amount: String(r.amount), batchId: null, arrived: false };
+      }
+      function setSync(mode) {
+        var el = $('syncStatus');
+        if (!el) return;
+        el.className = 'sync-status ' + mode;
+        if (mode === 'online') el.textContent = '已同步';
+        else if (mode === 'offline') el.textContent = '離線模式';
+        else el.textContent = '連線中…';
+      }
+      function persist(p, failMsg) {
+        if (!sb) return;
+        p.then(function (res) {
+          if (res && res.error) showToast((failMsg || '同步失敗') + '：' + res.error.message);
+        }).catch(function () { showToast(failMsg || '同步失敗'); });
+      }
+      function fetchAll() {
+        return Promise.all([
+          sb.from('records').select('*'),
+          sb.from('batches').select('*')
+        ]).then(function (res) {
+          if (res[0].error) throw res[0].error;
+          if (res[1].error) throw res[1].error;
+          return {
+            records: (res[0].data || []).map(recFrom),
+            batches: (res[1].data || []).map(batchFrom)
+          };
+        });
+      }
+      function seedShared() {
+        var rows = SEED_RECORDS.map(seedMap).map(recRow);
+        if (!rows.length) return Promise.resolve();
+        return sb.from('records').upsert(rows, { onConflict: 'id' }).then(function (res) {
+          if (res.error) throw res.error;
+        });
+      }
+      function applyData(d) {
+        records = d.records;
+        batches = d.batches;
+        cacheSave();
+        setSync('online');
+        renderAll();
+      }
+      function loadShared() {
+        if (typeof supabase === 'undefined') {
+          setSync('offline');
+          showToast('缺少 Supabase 設定，顯示本機資料');
+          return;
         }
-        return [];
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        fetchAll().then(function (d) {
+          if (!d.records.length && !d.batches.length) {
+            return seedShared().then(function () { return fetchAll(); });
+          }
+          return d;
+        }).then(function (d) {
+          applyData(d);
+          showToast('已同步共享資料庫');
+        }).catch(function () {
+          setSync('offline');
+          showToast('無法連線資料庫，顯示本機資料');
+        });
       }
-      function saveRecords() { localStorage.setItem(RECORDS_KEY, JSON.stringify(records)); }
-      function loadBatches() {
-        try {
-          var raw = localStorage.getItem(BATCHES_KEY);
-          var arr = raw ? JSON.parse(raw) : [];
-          return Array.isArray(arr) ? arr : [];
-        } catch (e) { return []; }
+      function refreshQuiet() {
+        if (!sb) return;
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(function () {
+          fetchAll().then(applyData).catch(function () { setSync('offline'); });
+        }, 250);
       }
-      function saveBatches() { localStorage.setItem(BATCHES_KEY, JSON.stringify(batches)); }
+      function subscribe() {
+        if (!sb) return;
+        var channel = sb.channel('ts-sync');
+        channel
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'records' }, function () { refreshQuiet(); })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'batches' }, function () { refreshQuiet(); })
+          .subscribe();
+        setInterval(function () { refreshQuiet(); }, 15000);
+      }
+      function replaceAllRemote() {
+        if (!sb) return;
+        Promise.all([
+          sb.from('records').delete().neq('id', '__none__'),
+          sb.from('batches').delete().neq('id', '__none__')
+        ]).then(function () {
+          return sb.from('records').upsert(records.map(recRow), { onConflict: 'id' });
+        }).then(function (res) {
+          if (res.error) throw res.error;
+          return sb.from('batches').upsert(batches.map(batchRow), { onConflict: 'id' });
+        }).then(function (res) {
+          if (res.error) throw res.error;
+        }).catch(function (e) { showToast('匯入同步失敗：' + (e.message || '')); });
+      }
       function findRec(id) {
         for (var i = 0; i < records.length; i++) if (records[i].id === id) return records[i];
         return null;
@@ -594,7 +688,8 @@
             delete selected[r.id];
             records = records.filter(function (x) { return x.id !== r.id; });
             pruneEmptyBatches();
-            saveRecords();
+            persist(sb.from('records').delete().eq('id', r.id), '同步失敗：刪除包裹');
+            cacheSave();
             renderAll();
             showToast('已刪除');
           });
@@ -614,10 +709,16 @@
 
       function pruneEmptyBatches() {
         var before = batches.length;
+        var removed = batches.filter(function (b) {
+          return !records.some(function (r) { return r.batchId === b.id; });
+        });
         batches = batches.filter(function (b) {
           return records.some(function (r) { return r.batchId === b.id; });
         });
-        if (batches.length !== before) saveBatches();
+        removed.forEach(function (b) {
+          persist(sb.from('batches').delete().eq('id', b.id), '同步失敗：刪除空批次');
+        });
+        if (batches.length !== before) cacheSave();
       }
 
       function renderBatches() {
@@ -694,7 +795,8 @@
             var r = findRec(cb.dataset.id);
             if (!r) return;
             r.arrived = cb.checked;
-            saveRecords();
+            persist(sb.from('records').update({ arrived: r.arrived }).eq('id', r.id), '同步失敗：到貨狀態');
+            cacheSave();
             renderAll();
           });
         });
@@ -704,8 +806,9 @@
             if (act === 'print') { printBatch(b.id); }
             else if (act === 'csv') { exportBatchCSV(b.id); }
             else if (act === 'arrived') {
-              recs.forEach(function (r) { r.arrived = true; });
-              saveRecords();
+              var ids = recs.map(function (r) { r.arrived = true; return r.id; });
+              persist(sb.from('records').update({ arrived: true }).in('id', ids), '同步失敗：全數到貨');
+              cacheSave();
               renderAll();
               showToast('已將 ' + b.name + ' 全部標記為到貨');
             }
@@ -714,7 +817,11 @@
               var sel = card.querySelector('.add-select');
               if (!sel.value) { showToast('請先選擇要加入的包裹'); return; }
               var r = findRec(sel.value);
-              if (r) { r.batchId = b.id; r.arrived = false; saveRecords(); renderAll(); showToast('已加入批次'); }
+              if (r) {
+                r.batchId = b.id; r.arrived = false;
+                persist(sb.from('records').update({ batch_id: b.id, arrived: false }).eq('id', r.id), '同步失敗：加入批次');
+                cacheSave(); renderAll(); showToast('已加入批次');
+              }
             }
           });
         });
@@ -725,10 +832,14 @@
         var b = findBatch(bid);
         if (!b) return;
         if (!confirm('將「' + b.name + '」的包裹全部退回「待集運」並刪除該批次？')) return;
-        records.forEach(function (r) { if (r.batchId === bid) { r.batchId = null; r.arrived = false; } });
+        var ids = [];
+        records.forEach(function (r) { if (r.batchId === bid) { ids.push(r.id); r.batchId = null; r.arrived = false; } });
         batches = batches.filter(function (x) { return x.id !== bid; });
-        saveRecords();
-        saveBatches();
+        persist(sb.from('batches').delete().eq('id', bid), '同步失敗：刪除批次');
+        if (ids.length) {
+          persist(sb.from('records').update({ batch_id: null, arrived: false }).in('id', ids), '同步失敗：退回未集運');
+        }
+        cacheSave();
         renderAll();
         showToast('已退回未集運');
       }
@@ -810,9 +921,10 @@
         records.forEach(function (r) {
           if (eligible.indexOf(r.id) !== -1) { r.batchId = batch.id; r.arrived = false; }
         });
-        saveBatches();
-        saveRecords();
+        persist(sb.from('batches').insert([batchRow(batch)]), '同步失敗：建立批次');
+        persist(sb.from('records').update({ batch_id: batch.id, arrived: false }).in('id', eligible), '同步失敗：更新包裹');
         selected = {};
+        cacheSave();
         renderAll();
         switchTab('batches');
         showToast('已建立 ' + batch.name + '（' + eligible.length + ' 件），可列印核對單');
@@ -845,8 +957,8 @@
             });
             records = recs;
             batches = Array.isArray(data.batches) ? data.batches : [];
-            saveRecords();
-            saveBatches();
+            replaceAllRemote();
+            cacheSave();
             renderAll();
             showToast('匯入完成：' + records.length + ' 筆');
           } catch (err) {
@@ -885,8 +997,8 @@
             err.textContent = '單號 ' + orderNo + ' 已存在（' + dup.name + '，' + fmtTime(dup.time) + '），請確認是否重複';
             return;
           }
-          records.push({
-            id: 'r' + Date.now() + '_' + records.length,
+          var rec = {
+            id: 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             time: Date.now(),
             name: name,
             orderNo: orderNo,
@@ -894,8 +1006,10 @@
             amount: amount,
             batchId: null,
             arrived: false
-          });
-          saveRecords();
+          };
+          records.push(rec);
+          persist(sb.from('records').insert([recRow(rec)]), '同步失敗：新增包裹');
+          cacheSave();
           $('registerForm').reset();
           renderAll();
           showToast('已登錄：' + name + ' — ' + orderNo);
@@ -931,7 +1045,12 @@
           e.target.value = '';
         });
 
+        var c = cacheLoad();
+        records = (c && Array.isArray(c.records)) ? c.records : SEED_RECORDS.map(seedMap);
+        batches = (c && Array.isArray(c.batches)) ? c.batches : [];
         renderAll();
+        loadShared();
+        subscribe();
       }
 
       init();
