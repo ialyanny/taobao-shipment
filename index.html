@@ -311,7 +311,7 @@
         <nav class="tabs">
           <button type="button" class="tab-btn active" data-tab="register">登錄包裹</button>
           <button type="button" class="tab-btn" data-tab="records">包裹總覽</button>
-          <button type="button" class="tab-btn" data-tab="batches">集運批次</button>
+          <button type="button" class="tab-btn" data-tab="batches" id="batchTabBtn">集運批次</button>
         </nav>
       </header>
 
@@ -367,14 +367,15 @@
             <div id="recordFilters" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
           </div>
           <div class="summary-line">
-            顯示 <b id="recordCount">0</b> 筆　｜　金額 <b id="recordAmount">0</b> 元　｜　已勾選 <b id="selectedCount">0</b> 筆
-            <span style="margin-left:12px;color:var(--muted);">勾選未集運的包裹後點「建立集運批次」，批次建立後可在「集運批次」分頁列印核對單。</span>
+            顯示 <b id="recordCount">0</b> 筆　｜　金額 <b id="recordAmount">0</b> 元
+            <span id="selectedSummary">　｜　已勾選 <b id="selectedCount">0</b> 筆</span>
+            <span id="batchHint" style="margin-left:12px;color:var(--muted);">勾選未集運的包裹後點「建立集運批次」，批次建立後可在「集運批次」分頁列印核對單。</span>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th style="width:32px;"><input type="checkbox" id="selectAll"></th>
+                  <th id="selectAllTh" style="width:32px;"><input type="checkbox" id="selectAll"></th>
                   <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>狀態</th><th></th>
                 </tr>
               </thead>
@@ -633,6 +634,7 @@
         formName = '';
         $('loginOverlay').style.display = 'none';
         renderUserBar();
+        if (!admin && currentTab === 'batches') switchTab('register');
         renderAll();
         startApp();
         showToast((admin ? '管理員模式，' : '') + '目前使用者：' + name);
@@ -654,6 +656,11 @@
         $('statsTitle').textContent = isAdmin() ? '每個人集運統計' : '我的包裹統計';
         $('filterRow').style.display = isAdmin() ? '' : 'none';
         $('backupCard').style.display = isAdmin() ? '' : 'none';
+        $('batchTabBtn').style.display = isAdmin() ? '' : 'none';
+        $('selectAllTh').style.display = isAdmin() ? '' : 'none';
+        $('btnCreateBatch').style.display = isAdmin() ? '' : 'none';
+        $('selectedSummary').style.display = isAdmin() ? '' : 'none';
+        $('batchHint').style.display = isAdmin() ? '' : 'none';
       }
 
       function showToast(msg) {
@@ -665,6 +672,7 @@
       }
 
       function switchTab(tab) {
+        if (tab === 'batches' && !isAdmin()) tab = 'records';
         currentTab = tab;
         ['register', 'records', 'batches'].forEach(function (t) {
           $('tab-' + t).style.display = t === tab ? 'block' : 'none';
@@ -783,18 +791,21 @@
 
         filtered.forEach(function (r) {
           var tr = document.createElement('tr');
-          var tdCheck = document.createElement('td');
-          var chk = document.createElement('input');
-          chk.type = 'checkbox';
-          chk.className = 'row-check';
-          chk.dataset.id = r.id;
-          chk.checked = !!selected[r.id];
-          chk.disabled = r.batchId != null;
-          chk.addEventListener('change', function () {
-            if (chk.checked) selected[r.id] = true; else delete selected[r.id];
-            updateSelectionUI();
-          });
-          tdCheck.appendChild(chk);
+          if (isAdmin()) {
+            var tdCheck = document.createElement('td');
+            var chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.className = 'row-check';
+            chk.dataset.id = r.id;
+            chk.checked = !!selected[r.id];
+            chk.disabled = r.batchId != null;
+            chk.addEventListener('change', function () {
+              if (chk.checked) selected[r.id] = true; else delete selected[r.id];
+              updateSelectionUI();
+            });
+            tdCheck.appendChild(chk);
+            tr.appendChild(tdCheck);
+          }
 
           var tdTime = document.createElement('td');
           tdTime.textContent = fmtTime(r.time);
@@ -835,7 +846,6 @@
           });
           tdAct.appendChild(delBtn);
 
-          tr.appendChild(tdCheck);
           tr.appendChild(tdTime);
           tr.appendChild(tdName);
           tr.appendChild(tdOrder);
