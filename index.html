@@ -279,15 +279,14 @@ var STORAGE_KEY = 'taobao_shipment_records';
         if (!API_URL) {
           return Promise.reject(new Error('API_URL 未設定'));
         }
-        if (action === 'get') {
-          return fetch(API_URL + '?action=get')
-            .then(function (r) { return r.json(); });
+        var params = 'action=' + encodeURIComponent(action);
+        if (payload) {
+          Object.keys(payload).forEach(function (k) {
+            params += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
+          });
         }
-        return fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ action: action }, payload || {}))
-        }).then(function (r) { return r.json(); });
+        return fetch(API_URL + '?' + params)
+          .then(function (r) { return r.json(); });
       }
 
       function getRecords() {
