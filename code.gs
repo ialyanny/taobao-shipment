@@ -16,19 +16,23 @@ function doGet(e) {
   if (action === 'get') {
     return ContentService.createTextOutput(JSON.stringify(fetchRecords_())).setMimeType(ContentService.MimeType.JSON);
   }
+  if (action === 'add') {
+    var data = {
+      name: e.parameter.name,
+      orderNo: e.parameter.orderNo,
+      item: e.parameter.item,
+      amount: e.parameter.amount
+    };
+    return ContentService.createTextOutput(JSON.stringify(addRecord_(data))).setMimeType(ContentService.MimeType.JSON);
+  }
+  if (action === 'delete') {
+    return ContentService.createTextOutput(JSON.stringify(deleteRecord_(parseInt(e.parameter.row)))).setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var action = data.action;
-  if (action === 'add') {
-    return ContentService.createTextOutput(JSON.stringify(addRecord_(data))).setMimeType(ContentService.MimeType.JSON);
-  }
-  if (action === 'delete') {
-    return ContentService.createTextOutput(JSON.stringify(deleteRecord_(data.row))).setMimeType(ContentService.MimeType.JSON);
-  }
-  return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'unknown action' })).setMimeType(ContentService.MimeType.JSON);
+  return doGet(e);
 }
 
 function fetchRecords_() {
