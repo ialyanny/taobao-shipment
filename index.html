@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>淘寶集運單</title>
+  <title>淘寶集運管理</title>
   <style>
     :root {
       --primary: #673ab7;
@@ -12,7 +12,12 @@
       --card: #ffffff;
       --border: #dadce0;
       --text: #202124;
+      --muted: #5f6368;
       --error: #d93025;
+      --green: #1e8e3e;
+      --green-dark: #178030;
+      --orange: #e37400;
+      --blue: #1a73e8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -22,7 +27,7 @@
       min-height: 100vh;
       padding: 24px 12px 48px;
     }
-    .container { max-width: 720px; margin: 0 auto; }
+    .container { max-width: 960px; margin: 0 auto; }
     .card {
       background: var(--card);
       border-radius: 8px;
@@ -31,7 +36,20 @@
       box-shadow: 0 1px 3px rgba(60, 64, 67, .3);
       margin-bottom: 16px;
     }
-    h1 { font-size: 28px; margin-bottom: 12px; color: var(--text); }
+    h1 { font-size: 26px; color: var(--text); }
+    .subtitle { font-size: 14px; color: var(--muted); margin: 4px 0 0; }
+    nav.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+    .tab-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 20px;
+      padding: 8px 18px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .tab-btn:hover { background: #f3f0f8; }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
     .notice {
       background: #fef7e0;
       border: 1px solid #f9ab00;
@@ -44,27 +62,9 @@
     }
     .notice strong { display: block; margin-bottom: 4px; }
     .field { margin-bottom: 20px; }
-    .field label {
-      display: block;
-      font-size: 16px;
-      font-weight: 500;
-      margin-bottom: 8px;
-    }
+    .field label { display: block; font-size: 16px; font-weight: 500; margin-bottom: 8px; }
     .required { color: var(--error); margin-left: 4px; }
-    input[type="text"] {
-      width: 100%;
-      padding: 12px 14px;
-      font-size: 16px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      outline: none;
-      transition: border .15s, box-shadow .15s;
-    }
-    input[type="text"]:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(103, 58, 183, .25);
-    }
-    .name-select {
+    input[type="text"], select {
       width: 100%;
       padding: 12px 14px;
       font-size: 16px;
@@ -74,36 +74,9 @@
       background: #fff;
       transition: border .15s, box-shadow .15s;
     }
-    .name-select:focus {
+    input[type="text"]:focus, select:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 2px rgba(103, 58, 183, .25);
-    }
-    .btn-copy {
-      background: #f0f4f8;
-      border: 1px solid #c5d6e7;
-      border-radius: 6px;
-      padding: 6px 12px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .btn-copy:hover { background: #e3ecf5; }
-    .radio-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-    .radio-group label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      font-size: 15px;
-      cursor: pointer;
-      transition: background .15s, border-color .15s;
-      user-select: none;
-    }
-    .radio-group input:checked + span { font-weight: 600; color: var(--primary-dark); }
-    .radio-group label:has(input:checked) {
-      background: #ede7f6;
-      border-color: var(--primary);
     }
     .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
     button {
@@ -115,32 +88,63 @@
       font-weight: 500;
       transition: background .15s, opacity .15s;
     }
+    button:disabled { opacity: .45; cursor: not-allowed; }
     .btn-submit { background: var(--primary); color: #fff; }
-    .btn-submit:hover { background: var(--primary-dark); }
+    .btn-submit:hover:not(:disabled) { background: var(--primary-dark); }
     .btn-clear { background: transparent; color: var(--primary-dark); border: 1px solid var(--border); }
     .btn-clear:hover { background: #f3f0f8; }
-    .btn-export { background: #1e8e3e; color: #fff; }
-    .btn-export:hover { background: #178030; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-green:hover:not(:disabled) { background: var(--green-dark); }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+    }
+    .btn-sm:hover { background: #f3f0f8; }
+    .btn-danger { color: var(--error); border-color: #f6c6c0; }
+    .btn-danger:hover { background: #fdedec; }
     .error { color: var(--error); font-size: 14px; margin-top: 6px; min-height: 20px; }
+    .hint { font-size: 14px; color: var(--muted); margin-bottom: 12px; line-height: 1.7; }
+
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
-    th { background: #f8f9fa; position: sticky; top: 0; }
-    .record-actions button {
+    th { background: #f8f9fa; position: sticky; top: 0; white-space: nowrap; }
+    .table-wrap { max-height: 460px; overflow: auto; }
+    tr:has(.row-check:checked) { background: #f5efff; }
+    .status-badge {
+      display: inline-block;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+    .st-pending { background: #e8f0fe; color: var(--blue); }
+    .st-shipped { background: #fef7e0; color: var(--orange); }
+    .row-actions button {
       background: none; border: none; color: var(--error);
       padding: 2px 6px; font-size: 13px;
     }
-    .record-actions button:hover { text-decoration: underline; }
+    .row-actions button:hover { text-decoration: underline; }
     .empty { text-align: center; color: #80868b; padding: 24px 0; }
-    .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px;
-      font-size: 15px; opacity: 0; pointer-events: none;
-      transition: opacity .25s; z-index: 100;
+    .summary-line { font-size: 14px; margin-bottom: 12px; line-height: 1.8; }
+    .summary-line b { color: var(--primary-dark); }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .person-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
     }
-    .toast.show { opacity: 1; }
-    .summary { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
-    .summary div { font-size: 14px; }
-    .summary span { font-weight: 700; color: var(--primary-dark); }
+    .person-card:hover { background: #f8f4fe; }
+    .person-card.active { border-color: var(--primary); background: #ede7f6; }
+    .person-name { font-weight: 700; font-size: 16px; }
+    .person-nums { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.7; }
+    .person-nums b { color: var(--primary-dark); }
+
     .filter-row { margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
     .filter-btn {
       padding: 6px 14px;
@@ -154,428 +158,621 @@
     }
     .filter-btn:hover { background: #f3f0f8; }
     .filter-btn.active { background: #ede7f6; border-color: var(--primary); font-weight: 600; color: var(--primary-dark); }
-    .filter-checkboxes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-    .filter-checkboxes label { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 16px; font-size: 13px; cursor: pointer; user-select: none; transition: background .15s, border-color .15s; }
-    .filter-checkboxes input[type="checkbox"] { accent-color: var(--primary); width: 14px; height: 14px; }
-    .filter-checkboxes label:has(input:checked) { background: #ede7f6; border-color: var(--primary); font-weight: 600; color: var(--primary-dark); }
-    .cell-with-copy { display: flex; align-items: center; gap: 4px; }
-    .btn-copy { background: none; border: none; cursor: pointer; padding: 2px 6px; font-size: 12px; color: var(--primary); border-radius: 4px; opacity: 0.6; transition: opacity .15s; }
-    .btn-copy:hover { opacity: 1; background: #ede7f6; }
-    .success-banner {
-      background: #e6f4ea; border: 1px solid #34a853; color: #137333;
-      border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;
-      font-size: 14px; display: none;
+
+    .batch-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #fff;
+    }
+    .batch-head { display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; }
+    .batch-title { font-size: 17px; font-weight: 700; }
+    .batch-meta { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.7; }
+    .batch-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 10px;
+      vertical-align: middle;
+      margin-left: 6px;
+    }
+    .badge-blue { background: #e8f0fe; color: var(--blue); }
+    .badge-orange { background: #fef7e0; color: var(--orange); }
+    .badge-green { background: #e6f4ea; color: var(--green); }
+    .badge-muted { background: #f1f3f4; color: var(--muted); }
+    .batch-records { margin-top: 12px; }
+    .batch-group-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--primary-dark);
+      background: #f8f4fe;
+      padding: 6px 10px;
+      border-radius: 6px 6px 0 0;
+      margin-top: 8px;
+    }
+    .batch-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .batch-row:hover { background: #faf8ff; }
+    .batch-row.arrived { background: #f2f9f4; }
+    .batch-row input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; flex: none; }
+    .row-order { font-family: Consolas, "Courier New", monospace; font-weight: 600; white-space: nowrap; }
+    .row-item { flex: 1 1 auto; color: var(--text); }
+    .row-amount { color: var(--muted); white-space: nowrap; }
+    .row-mark { color: var(--green); font-weight: 700; white-space: nowrap; }
+    .batch-add { display: flex; gap: 6px; margin-top: 12px; }
+    .batch-add select { flex: 1 1 auto; width: auto; padding: 8px 10px; font-size: 13px; }
+    .mono { font-family: Consolas, "Courier New", monospace; }
+
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #323232; color: #fff; padding: 12px 24px; border-radius: 6px;
+      font-size: 15px; opacity: 0; pointer-events: none;
+      transition: opacity .25s; z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+
+    #printArea { display: none; }
+    @media print {
+      @page { size: A4; margin: 12mm; }
+      body { background: #fff; padding: 0; }
+      #app { display: none !important; }
+      .toast { display: none !important; }
+      #printArea { display: block !important; }
+      .print-sheet { font-size: 12px; color: #000; }
+      .print-sheet h1 { font-size: 20px; margin-bottom: 6px; }
+      .print-meta { margin-bottom: 3px; line-height: 1.6; }
+      .print-group {
+        font-weight: 700;
+        font-size: 14px;
+        margin: 12px 0 4px;
+        padding: 2px 4px;
+        border-left: 4px solid #000;
+      }
+      .print-table { width: 100%; border-collapse: collapse; }
+      .print-table th, .print-table td { border: 1px solid #000; padding: 5px 6px; }
+      .print-table th { background: #eee !important; position: static; }
+      .mono { font-family: Consolas, "Courier New", monospace; font-size: 13px; }
+      .col-check { width: 34px; text-align: center; }
+      .col-amt { width: 76px; text-align: right; }
+      .print-foot { margin-top: 16px; line-height: 2; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="card">
-      <h1>淘寶集運單</h1>
-      <p style="margin-bottom:12px;font-size:15px;line-height:1.7;">
-        請填入訂單號、品項、金額，勾選姓名（必填），方便申報集運及避免系統未入倉。
-        如有輸入錯誤訊息，請重新填寫一筆。
-      </p>
-      <div class="notice">
-        <strong>請注意</strong>
-        • 廈門海快集運倉無法運送食品<br>
-        • 11/14 之後運費每公斤調漲 0.5 人民幣，原 6.5 → 7 元，包稅 2 元，每公斤運費 9 人民幣<br>
-        • 12/15 之後再漲價，11 公斤以上，每公斤 8 元人民幣，包稅 10 元人民幣
-      </div>
+  <div id="app">
+    <div class="container">
+      <header>
+        <h1>淘寶集運管理</h1>
+        <p class="subtitle">輸入單號、品項、金額，統計每個人的集運包裹；勾選建立集運批次，到貨後用列印單核對。</p>
+        <nav class="tabs">
+          <button type="button" class="tab-btn active" data-tab="register">登錄包裹</button>
+          <button type="button" class="tab-btn" data-tab="records">包裹總覽</button>
+          <button type="button" class="tab-btn" data-tab="batches">集運批次</button>
+        </nav>
+      </header>
 
-      <form id="shipmentForm" novalidate>
-        <div class="field">
-          <label for="orderNo">單號</label>
-          <input type="text" id="orderNo" name="orderNo" placeholder="請輸入訂單號" autocomplete="off">
+      <section id="tab-register" class="tab-panel">
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:8px;">登錄新包裹</h2>
+          <div class="notice">
+            <strong>請注意</strong>
+            • 廈門海快集運倉無法運送食品<br>
+            • 11/14 之後運費每公斤調漲 0.5 人民幣，原 6.5 → 7 元，包稅 2 元，每公斤運費 9 人民幣<br>
+            • 12/15 之後再漲價，11 公斤以上，每公斤 8 元人民幣，包稅 10 元人民幣
+          </div>
+          <form id="registerForm" novalidate>
+            <div class="field">
+              <label for="orderNo">單號</label>
+              <input type="text" id="orderNo" name="orderNo" placeholder="例如 1234567890123" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="item">品項</label>
+              <input type="text" id="item" name="item" placeholder="例如 手機殼" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="amount">金額（人民幣）</label>
+              <input type="text" id="amount" name="amount" placeholder="例如 100 或 100元" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="nameInput">姓名<span class="required">*</span></label>
+              <input type="text" id="nameInput" name="nameInput" list="nameList" placeholder="選擇或輸入姓名" autocomplete="off">
+              <datalist id="nameList"></datalist>
+              <div class="error" id="formError"></div>
+            </div>
+            <div class="btn-row">
+              <button type="submit" class="btn-submit">提交</button>
+              <button type="button" class="btn-clear" id="btnClear">清除表單</button>
+            </div>
+          </form>
         </div>
-        <div class="field">
-          <label for="item">品項</label>
-          <input type="text" id="item" name="item" placeholder="請輸入品項" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="amount">金額</label>
-          <input type="text" id="amount" name="amount" placeholder="請輸入金額" autocomplete="off">
-        </div>
-      <div class="field">
-        <label for="nameSelect">姓名<span class="required">*</span></label>
-        <select id="nameSelect" class="name-select" required>
-          <option value="">請選擇姓名</option>
-        </select>
-        <div class="error" id="nameError"></div>
-      </div>
-        <div class="btn-row">
-          <button type="submit" class="btn-submit">提交</button>
-          <button type="button" class="btn-clear" id="btnClear">清除表單</button>
-        </div>
-      </form>
-    </div>
+      </section>
 
-    <div class="success-banner" id="successBanner"></div>
-
-    <div class="card">
-      <h2 style="font-size:20px;margin-bottom:8px;">提交記錄</h2>
-      <div class="filter-row">
-        <span style="font-size:14px;margin-right:8px;">篩選姓名：</span>
-        <div id="nameFilter" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-      </div>
-      <div class="summary">
-        <div>共 <span id="totalCount">0</span> 筆</div>
-        <div>總金額 <span id="totalAmount">0</span> 元</div>
-        <div style="display:flex;gap:8px;margin-left:auto;align-items:center;">
-          <span style="font-size:14px;">快速複製：</span>
-          <button type="button" class="btn-copy" data-target="orderNo">複製單號</button>
-          <button type="button" class="btn-copy" data-target="item">複製品項</button>
-          <button type="button" class="btn-export" id="btnExport">匯出 CSV</button>
+      <section id="tab-records" class="tab-panel" style="display:none">
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:12px;">每個人集運統計</h2>
+          <div id="statsBox"></div>
         </div>
-      </div>
-      <div style="max-height:420px;overflow:auto;">
-        <table>
-          <thead>
-            <tr><th><input type="checkbox" id="selectAll"></th><th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th></th></tr>
-          </thead>
-          <tbody id="recordsBody"></tbody>
-        </table>
-      </div>
-      <div class="empty" id="emptyText">尚無提交記錄</div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <h2 style="font-size:20px;">包裹列表</h2>
+            <div class="btn-row">
+              <button type="button" class="btn-green" id="btnCreateBatch">建立集運批次（勾選）</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span style="font-size:14px;margin-right:8px;">篩選姓名：</span>
+            <div id="recordFilters" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
+          <div class="summary-line">
+            顯示 <b id="recordCount">0</b> 筆　｜　金額 <b id="recordAmount">0</b> 元　｜　已勾選 <b id="selectedCount">0</b> 筆
+            <span style="margin-left:12px;color:var(--muted);">勾選未集運的包裹後點「建立集運批次」，批次建立後可在「集運批次」分頁列印核對單。</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:32px;"><input type="checkbox" id="selectAll"></th>
+                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>狀態</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody"></tbody>
+            </table>
+          </div>
+          <div class="empty" id="emptyText">尚無包裹資料</div>
+        </div>
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:8px;">資料備份</h2>
+          <p class="hint">資料只存在於這個瀏覽器。建議更換裝置或清理瀏覽器前，先匯出備份。</p>
+          <div class="btn-row">
+            <button type="button" class="btn-submit" id="btnBackup">匯出備份 JSON</button>
+            <label class="btn-clear" style="display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;padding:12px 24px;font-size:15px;font-weight:500;cursor:pointer;color:var(--primary-dark);">
+              匯入備份
+              <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-batches" class="tab-panel" style="display:none">
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:8px;">集運批次</h2>
+          <p class="hint">把要一起寄的包裹勾選建立為一個批次。包裹到貨後，勾選「已到貨」核對，並可列印核對單比對是否有缺少。</p>
+          <div id="batchList"></div>
+        </div>
+      </section>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
+  <div id="printArea"></div>
 
   <script>
     (function () {
-var STORAGE_KEY = 'taobao_shipment_records';
-      // 貼上 Apps Script Web App 網址（部署後）。留空 = 僅用本機 localStorage
-      var API_URL = 'https://script.google.com/macros/s/AKfycbxRxs7i8Te9D3rRQDp3FNtb2V_ZtMQhk5M9pZDCXg0buTorsVdr6COD57puzZ9o0Tyd/exec';
-      var LOCAL_ONLY = !API_URL;
-      var INITIAL_RECORDS = [{"time":1784319875000,"name":"弟","orderNo":"435272535982156","item":"褲子","amount":"0"},{"time":1783189726000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠背","amount":"47.62"},{"time":1783550938000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠","amount":"47.62"},{"time":1784296380000,"name":"榮吉","orderNo":"9822789936997","item":"衣物除味噴霧","amount":"0"},{"time":1782723847000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783292462000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"1.89元"},{"time":1783337040000,"name":"榮吉","orderNo":"773430298305689","item":"眼線筆","amount":"0"},{"time":1783873464000,"name":"榮吉","orderNo":"435266561020411","item":"67W快充線","amount":"0"},{"time":1783952041000,"name":"榮吉","orderNo":"JT3170121905771","item":"測電筆","amount":"0"},{"time":1783897780000,"name":"俊賢","orderNo":"YT7631445333130","item":"收納盒","amount":"2.01元"},{"time":1784207750000,"name":"榮吉","orderNo":"9822779604858","item":"定妝噴霧","amount":"0"},{"time":1782228397000,"name":"俊賢","orderNo":"773426545571792","item":"陶瓷蒸籠","amount":"24.3元"},{"time":1782235638000,"name":"俊賢","orderNo":"79014009539615","item":"冰霸杯","amount":"18.82"},{"time":1782286450000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1782286492000,"name":"俊賢","orderNo":"YT8879717510828","item":"轉接頭","amount":"13.5"},{"time":1782338541000,"name":"弟","orderNo":"773427544569349","item":"保護貼","amount":"14.35"},{"time":1784484941000,"name":"榮吉","orderNo":"435276290900047","item":"吃瓜神器","amount":"0"},{"time":1782513459000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"5元"},{"time":1783189778000,"name":"俊賢","orderNo":"73600478536863","item":"手機殼","amount":"100.28"},{"time":1783189941000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1783189819000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783189886000,"name":"俊賢","orderNo":"YT8880636814779","item":"雨傘","amount":"11.06"},{"time":1784319898000,"name":"弟","orderNo":"YT7633193521247","item":"褲子1","amount":"0"},{"time":1784319956000,"name":"弟","orderNo":"773431765309218","item":"玻璃貼","amount":"0"},{"time":1784320053000,"name":"弟","orderNo":"773431758134690","item":"玻璃貼1","amount":"0"},{"time":1784320081000,"name":"弟","orderNo":"YT7632896479356","item":"充電器","amount":"0"},{"time":1784320106000,"name":"弟","orderNo":"79018899130936","item":"充電器1","amount":"0"},{"time":1784320129000,"name":"弟","orderNo":"YT7632898574570","item":"充電線","amount":"0"},{"time":1784737218000,"name":"Hebe","orderNo":"YT0057803917151","item":"衣服","amount":"100"},{"time":1785111442000,"name":"榮吉","orderNo":"JT3171664587193","item":"電競指套","amount":"0"},{"time":1785278413000,"name":"Hebe","orderNo":"770335249124628","item":"衣服","amount":"100"},{"time":1785332469000,"name":"俊賢","orderNo":"9822835052492","item":"香薰","amount":"0.99"},{"time":1785332515000,"name":"俊賢","orderNo":"79020255221536","item":"藍芽接收器","amount":"11.04"},{"time":1785332590000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785332657000,"name":"俊賢","orderNo":"JT3170599843390","item":"耳機轉接線","amount":"7.69"},{"time":1783884033000,"name":"榮吉","orderNo":"JT3170097566028","item":"去污膏","amount":"0"},{"time":1785481461000,"name":"弟","orderNo":"SF5112962902449","item":"保護套","amount":"0"},{"time":1785481487000,"name":"弟","orderNo":"79021580267193","item":"充電線","amount":"0"},{"time":1785665628000,"name":"榮吉","orderNo":"79022871145996","item":"拼豆補充包","amount":"0"},{"time":1785667688000,"name":"榮吉","orderNo":"773434710903862","item":"藍芽耳機","amount":"0"},{"time":1785695129000,"name":"榮吉","orderNo":"9822899066964","item":"耳塞","amount":"0"},{"time":1785695178000,"name":"榮吉","orderNo":"435295643351172","item":"耳洞清潔器","amount":"0"},{"time":1784635685000,"name":"榮吉","orderNo":"JT3171090028762","item":"外出背包","amount":"0"},{"time":1784660978000,"name":"榮吉","orderNo":"9822818624350","item":"香氛","amount":"0"},{"time":1785749782000,"name":"俊賢","orderNo":"79127598165487","item":"頭盔耳機","amount":"57.34"},{"time":1785749845000,"name":"俊賢","orderNo":"JT5506335502948","item":"麥克風","amount":"5.4"},{"time":1785749959000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785750016000,"name":"俊賢","orderNo":"79020255221536","item":"5.3音頻接收器","amount":"11.04"},{"time":1785760133000,"name":"Hebe","orderNo":"79022917754324","item":"衣服","amount":"100"},{"time":1785777651000,"name":"榮吉","orderNo":"773434828480463","item":"美甲磁鐵棒","amount":"0"},{"time":1785777702000,"name":"榮吉","orderNo":"9822904532251","item":"拼豆筆","amount":"0"},{"time":1785795133000,"name":"俊賢","orderNo":"JT5511428018522","item":"雨衣","amount":"11.97"},{"time":1785795199000,"name":"俊賢","orderNo":"JT5511585053529","item":"外套","amount":"13.8"},{"time":1785795261000,"name":"俊賢","orderNo":"JT5511614179773","item":"藍芽接收器","amount":"24.04"},{"time":1785835977000,"name":"榮吉","orderNo":"YT7636433267767","item":"拼豆針","amount":"0"},{"time":1785836009000,"name":"榮吉","orderNo":"773434948184628","item":"刮鬍刀","amount":"0"},{"time":1785837467000,"name":"榮吉","orderNo":"9822909716382","item":"圖釘1","amount":"0"},{"time":1785837541000,"name":"榮吉","orderNo":"773434976323581","item":"圖釘2","amount":"0"}]
-;
+      var RECORDS_KEY = 'ts_records_v2';
+      var BATCHES_KEY = 'ts_batches_v2';
       var NAMES = ['俊賢', '榮吉', '小惠', 'Hebe', '弟', '妹', '育源', '武昌', '曉君'];
+      var SEED_RECORDS = [{"time":1784319875000,"name":"弟","orderNo":"435272535982156","item":"褲子","amount":"0"},{"time":1783189726000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠背","amount":"47.62"},{"time":1783550938000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠","amount":"47.62"},{"time":1784296380000,"name":"榮吉","orderNo":"9822789936997","item":"衣物除味噴霧","amount":"0"},{"time":1782723847000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783292462000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"1.89元"},{"time":1783337040000,"name":"榮吉","orderNo":"773430298305689","item":"眼線筆","amount":"0"},{"time":1783873464000,"name":"榮吉","orderNo":"435266561020411","item":"67W快充線","amount":"0"},{"time":1783952041000,"name":"榮吉","orderNo":"JT3170121905771","item":"測電筆","amount":"0"},{"time":1783897780000,"name":"俊賢","orderNo":"YT7631445333130","item":"收納盒","amount":"2.01元"},{"time":1784207750000,"name":"榮吉","orderNo":"9822779604858","item":"定妝噴霧","amount":"0"},{"time":1782228397000,"name":"俊賢","orderNo":"773426545571792","item":"陶瓷蒸籠","amount":"24.3元"},{"time":1782235638000,"name":"俊賢","orderNo":"79014009539615","item":"冰霸杯","amount":"18.82"},{"time":1782286450000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1782286492000,"name":"俊賢","orderNo":"YT8879717510828","item":"轉接頭","amount":"13.5"},{"time":1782338541000,"name":"弟","orderNo":"773427544569349","item":"保護貼","amount":"14.35"},{"time":1784484941000,"name":"榮吉","orderNo":"435276290900047","item":"吃瓜神器","amount":"0"},{"time":1782513459000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"5元"},{"time":1783189778000,"name":"俊賢","orderNo":"73600478536863","item":"手機殼","amount":"100.28"},{"time":1783189941000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1783189819000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783189886000,"name":"俊賢","orderNo":"YT8880636814779","item":"雨傘","amount":"11.06"},{"time":1784319898000,"name":"弟","orderNo":"YT7633193521247","item":"褲子1","amount":"0"},{"time":1784319956000,"name":"弟","orderNo":"773431765309218","item":"玻璃貼","amount":"0"},{"time":1784320053000,"name":"弟","orderNo":"773431758134690","item":"玻璃貼1","amount":"0"},{"time":1784320081000,"name":"弟","orderNo":"YT7632896479356","item":"充電器","amount":"0"},{"time":1784320106000,"name":"弟","orderNo":"79018899130936","item":"充電器1","amount":"0"},{"time":1784320129000,"name":"弟","orderNo":"YT7632898574570","item":"充電線","amount":"0"},{"time":1784737218000,"name":"Hebe","orderNo":"YT0057803917151","item":"衣服","amount":"100"},{"time":1785111442000,"name":"榮吉","orderNo":"JT3171664587193","item":"電競指套","amount":"0"},{"time":1785278413000,"name":"Hebe","orderNo":"770335249124628","item":"衣服","amount":"100"},{"time":1785332469000,"name":"俊賢","orderNo":"9822835052492","item":"香薰","amount":"0.99"},{"time":1785332515000,"name":"俊賢","orderNo":"79020255221536","item":"藍芽接收器","amount":"11.04"},{"time":1785332590000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785332657000,"name":"俊賢","orderNo":"JT3170599843390","item":"耳機轉接線","amount":"7.69"},{"time":1783884033000,"name":"榮吉","orderNo":"JT3170097566028","item":"去污膏","amount":"0"},{"time":1785481461000,"name":"弟","orderNo":"SF5112962902449","item":"保護套","amount":"0"},{"time":1785481487000,"name":"弟","orderNo":"79021580267193","item":"充電線","amount":"0"},{"time":1785665628000,"name":"榮吉","orderNo":"79022871145996","item":"拼豆補充包","amount":"0"},{"time":1785667688000,"name":"榮吉","orderNo":"773434710903862","item":"藍芽耳機","amount":"0"},{"time":1785695129000,"name":"榮吉","orderNo":"9822899066964","item":"耳塞","amount":"0"},{"time":1785695178000,"name":"榮吉","orderNo":"435295643351172","item":"耳洞清潔器","amount":"0"},{"time":1784635685000,"name":"榮吉","orderNo":"JT3171090028762","item":"外出背包","amount":"0"},{"time":1784660978000,"name":"榮吉","orderNo":"9822818624350","item":"香氛","amount":"0"},{"time":1785749782000,"name":"俊賢","orderNo":"79127598165487","item":"頭盔耳機","amount":"57.34"},{"time":1785749845000,"name":"俊賢","orderNo":"JT5506335502948","item":"麥克風","amount":"5.4"},{"time":1785749959000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785750016000,"name":"俊賢","orderNo":"79020255221536","item":"5.3音頻接收器","amount":"11.04"},{"time":1785760133000,"name":"Hebe","orderNo":"79022917754324","item":"衣服","amount":"100"},{"time":1785777651000,"name":"榮吉","orderNo":"773434828480463","item":"美甲磁鐵棒","amount":"0"},{"time":1785777702000,"name":"榮吉","orderNo":"9822904532251","item":"拼豆筆","amount":"0"},{"time":1785795133000,"name":"俊賢","orderNo":"JT5511428018522","item":"雨衣","amount":"11.97"},{"time":1785795199000,"name":"俊賢","orderNo":"JT5511585053529","item":"外套","amount":"13.8"},{"time":1785795261000,"name":"俊賢","orderNo":"JT5511614179773","item":"藍芽接收器","amount":"24.04"},{"time":1785835977000,"name":"榮吉","orderNo":"YT7636433267767","item":"拼豆針","amount":"0"},{"time":1785836009000,"name":"榮吉","orderNo":"773434948184628","item":"刮鬍刀","amount":"0"},{"time":1785837467000,"name":"榮吉","orderNo":"9822909716382","item":"圖釘1","amount":"0"},{"time":1785837541000,"name":"榮吉","orderNo":"773434976323581","item":"圖釘2","amount":"0"}];
 
-      var form = document.getElementById('shipmentForm');
-      var orderNo = document.getElementById('orderNo');
-      var item = document.getElementById('item');
-      var amount = document.getElementById('amount');
-      var nameSelect = document.getElementById('nameSelect');
-      var nameError = document.getElementById('nameError');
-      var successBanner = document.getElementById('successBanner');
-      var recordsBody = document.getElementById('recordsBody');
-      var emptyText = document.getElementById('emptyText');
-      var totalCount = document.getElementById('totalCount');
-      var totalAmount = document.getElementById('totalAmount');
-      var nameFilter = document.getElementById('nameFilter');
-      var toast = document.getElementById('toast');
+      var records = loadRecords();
+      var batches = loadBatches();
+      var currentTab = 'register';
+      var currentFilter = 'all';
+      var selected = {};
 
-      function buildNameSelect() {
-        NAMES.forEach(function (n) {
-          var opt = document.createElement('option');
-          opt.value = n;
-          opt.textContent = n;
-          nameSelect.appendChild(opt);
-        });
+      function $(id) { return document.getElementById(id); }
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
-
-      function apiRequest(action, payload) {
-        if (!API_URL) {
-          return Promise.reject(new Error('API_URL 未設定'));
-        }
-        var params = 'action=' + encodeURIComponent(action);
-        if (payload) {
-          Object.keys(payload).forEach(function (k) {
-            params += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
-          });
-        }
-        return fetch(API_URL + '?' + params)
-          .then(function (r) { return r.json(); });
-      }
-
-      function getRecords() {
-        try {
-          var raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw && INITIAL_RECORDS && INITIAL_RECORDS.length) {
-            saveRecords(INITIAL_RECORDS);
-            return INITIAL_RECORDS.slice();
-          }
-          var arr = raw ? JSON.parse(raw) : [];
-          return Array.isArray(arr) ? arr : [];
-        } catch (e) { return []; }
-      }
-
-      function saveRecords(records) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-      }
-
-      function loadFromRemote() {
-        return apiRequest('get').then(function (res) {
-          if (res && res.ok && Array.isArray(res.records)) {
-            saveRecords(res.records);
-            return res.records;
-          }
-          throw new Error(res && res.error ? res.error : 'load failed');
-        });
-      }
-
-      function formatTime(ts) {
+      function fmtTime(ts) {
         var d = new Date(ts);
         function p(x) { return x < 10 ? '0' + x : '' + x; }
         return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
       }
+      function toNum(v) {
+        var n = parseFloat(String(v == null ? '' : v).replace(/[^\d.\-]/g, ''));
+        return isNaN(n) ? 0 : n;
+      }
+      function round2(n) { return Math.round(n * 100) / 100; }
 
-      var currentFilter = 'all';
+      function loadRecords() {
+        try {
+          var raw = localStorage.getItem(RECORDS_KEY);
+          if (raw) {
+            var arr = JSON.parse(raw);
+            if (Array.isArray(arr)) return arr;
+          }
+        } catch (e) {}
+        if (SEED_RECORDS.length) {
+          var seeded = SEED_RECORDS.map(function (r, i) {
+            return {
+              id: 's' + i,
+              time: r.time,
+              name: r.name,
+              orderNo: String(r.orderNo),
+              item: r.item,
+              amount: String(r.amount),
+              batchId: null,
+              arrived: false
+            };
+          });
+          localStorage.setItem(RECORDS_KEY, JSON.stringify(seeded));
+          return seeded;
+        }
+        return [];
+      }
+      function saveRecords() { localStorage.setItem(RECORDS_KEY, JSON.stringify(records)); }
+      function loadBatches() {
+        try {
+          var raw = localStorage.getItem(BATCHES_KEY);
+          var arr = raw ? JSON.parse(raw) : [];
+          return Array.isArray(arr) ? arr : [];
+        } catch (e) { return []; }
+      }
+      function saveBatches() { localStorage.setItem(BATCHES_KEY, JSON.stringify(batches)); }
+      function findRec(id) {
+        for (var i = 0; i < records.length; i++) if (records[i].id === id) return records[i];
+        return null;
+      }
+      function findBatch(id) {
+        for (var i = 0; i < batches.length; i++) if (batches[i].id === id) return batches[i];
+        return null;
+      }
+      function batchName(id) {
+        var b = findBatch(id);
+        return b ? b.name : '';
+      }
 
-      function updateNameFilter() {
-        var records = getRecords();
-        var names = [];
-        records.forEach(function (r) { if (names.indexOf(r.name) === -1) names.push(r.name); });
+      function showToast(msg) {
+        var t = $('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
+      }
+
+      function switchTab(tab) {
+        currentTab = tab;
+        ['register', 'records', 'batches'].forEach(function (t) {
+          $('tab-' + t).style.display = t === tab ? 'block' : 'none';
+        });
+        document.querySelectorAll('.tab-btn').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.tab === tab);
+        });
+        renderAll();
+      }
+
+      function renderNameList() {
+        var set = {};
+        records.forEach(function (r) { if (r.name) set[r.name] = true; });
+        NAMES.forEach(function (n) { set[n] = true; });
+        var dl = $('nameList');
+        dl.innerHTML = '';
+        Object.keys(set).sort().forEach(function (n) {
+          var o = document.createElement('option');
+          o.value = n;
+          dl.appendChild(o);
+        });
+      }
+
+      function renderStats() {
+        var box = $('statsBox');
+        var map = {}, names = [], allCount = 0, allAmount = 0, allPendingCount = 0, allPendingAmount = 0;
+        records.forEach(function (r) {
+          var num = toNum(r.amount);
+          allCount++;
+          allAmount += num;
+          if (!map[r.name]) { map[r.name] = { pc: 0, pa: 0, sc: 0, sa: 0 }; names.push(r.name); }
+          if (r.batchId == null) {
+            map[r.name].pc++; map[r.name].pa += num;
+            allPendingCount++; allPendingAmount += num;
+          } else {
+            map[r.name].sc++; map[r.name].sa += num;
+          }
+        });
         names.sort();
-        nameFilter.innerHTML = '';
-        var btnAll = document.createElement('button');
-        btnAll.type = 'button';
-        btnAll.className = 'filter-btn';
-        btnAll.dataset.name = 'all';
-        btnAll.textContent = '全部';
-        nameFilter.appendChild(btnAll);
+        var html = '<div class="summary-line">全部 <b>' + allCount + '</b> 筆 / 總金額 <b>¥' + round2(allAmount) + '</b>　｜　待集運 <b>' + allPendingCount + '</b> 件 / <b>¥' + round2(allPendingAmount) + '</b>（點卡片可篩選）</div>';
+        html += '<div class="stats-grid">';
+        names.forEach(function (n) {
+          var s = map[n];
+          html += '<div class="person-card' + (currentFilter === n ? ' active' : '') + '" data-name="' + esc(n) + '">'
+            + '<div class="person-name">' + esc(n) + '</div>'
+            + '<div class="person-nums">待集運 <b>' + s.pc + '</b> 件 / ¥' + round2(s.pa) + '</div>'
+            + '<div class="person-nums">已集運 <b>' + s.sc + '</b> 件 / ¥' + round2(s.sa) + '</div>'
+            + '</div>';
+        });
+        html += '</div>';
+        box.innerHTML = html;
+        box.querySelectorAll('.person-card').forEach(function (c) {
+          c.addEventListener('click', function () {
+            currentFilter = (currentFilter === c.dataset.name) ? 'all' : c.dataset.name;
+            renderStats();
+            renderRecords();
+          });
+        });
+      }
+
+      function updateSelectionUI() {
+        var n = 0;
+        for (var id in selected) if (selected[id]) n++;
+        $('selectedCount').textContent = n;
+      }
+
+      function renderRecords() {
+        var tbody = $('recordsBody');
+        var filtered = currentFilter === 'all'
+          ? records.slice()
+          : records.filter(function (r) { return r.name === currentFilter; });
+        filtered.sort(function (a, b) { return b.time - a.time; });
+
+        var fr = $('recordFilters');
+        fr.innerHTML = '';
+        var names = ['all'];
+        records.forEach(function (r) { if (r.name && names.indexOf(r.name) === -1) names.push(r.name); });
+        names.sort(function (a, b) { return a === 'all' ? -1 : (b === 'all' ? 1 : a.localeCompare(b)); });
         names.forEach(function (n) {
           var btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'filter-btn';
           btn.dataset.name = n;
-          btn.textContent = n;
-          nameFilter.appendChild(btn);
+          btn.textContent = n === 'all' ? '全部' : n;
+          if (currentFilter === n) btn.classList.add('active');
+          fr.appendChild(btn);
         });
-        var target = (names.indexOf(currentFilter) !== -1) ? currentFilter : 'all';
-        nameFilter.querySelectorAll('.filter-btn').forEach(function (b) {
-          b.classList.toggle('active', b.dataset.name === target);
-        });
-        currentFilter = target;
-      }
 
-      function render() {
-        var all = getRecords();
-        updateNameFilter();
-        var records = currentFilter === 'all'
-          ? all.slice()
-          : all.filter(function (r) { return r.name === currentFilter; });
-
-        recordsBody.innerHTML = '';
-        totalCount.textContent = records.length;
-
+        $('recordCount').textContent = filtered.length;
         var sum = 0;
-        records.forEach(function (r) {
-          var num = parseFloat(r.amount);
-          if (!isNaN(num)) sum += num;
-        });
-        totalAmount.textContent = Math.round(sum * 100) / 100;
+        filtered.forEach(function (r) { sum += toNum(r.amount); });
+        $('recordAmount').textContent = round2(sum);
+        updateSelectionUI();
 
-        if (records.length === 0) {
-          emptyText.style.display = 'block';
+        tbody.innerHTML = '';
+        if (!filtered.length) {
+          $('emptyText').style.display = 'block';
           return;
         }
-        emptyText.style.display = 'none';
+        $('emptyText').style.display = 'none';
 
-        records.forEach(function (r) {
+        filtered.forEach(function (r) {
           var tr = document.createElement('tr');
           var tdCheck = document.createElement('td');
           var chk = document.createElement('input');
           chk.type = 'checkbox';
           chk.className = 'row-check';
-          chk.dataset.orderNo = r.orderNo;
-          chk.dataset.item = r.item;
+          chk.dataset.id = r.id;
+          chk.checked = !!selected[r.id];
+          chk.disabled = r.batchId != null;
+          chk.addEventListener('change', function () {
+            if (chk.checked) selected[r.id] = true; else delete selected[r.id];
+            updateSelectionUI();
+          });
           tdCheck.appendChild(chk);
+
           var tdTime = document.createElement('td');
-          tdTime.textContent = formatTime(r.time);
+          tdTime.textContent = fmtTime(r.time);
           var tdName = document.createElement('td');
           tdName.textContent = r.name;
           var tdOrder = document.createElement('td');
+          tdOrder.className = 'mono';
           tdOrder.textContent = r.orderNo;
           var tdItem = document.createElement('td');
           tdItem.textContent = r.item;
           var tdAmount = document.createElement('td');
           tdAmount.textContent = r.amount;
+          var tdStatus = document.createElement('td');
+          var badge = document.createElement('span');
+          if (r.batchId == null) {
+            badge.className = 'status-badge st-pending';
+            badge.textContent = '待集運';
+          } else {
+            badge.className = 'status-badge st-shipped';
+            badge.textContent = '集運中·' + batchName(r.batchId);
+          }
+          tdStatus.appendChild(badge);
+
           var tdAct = document.createElement('td');
-          tdAct.className = 'record-actions';
+          tdAct.className = 'row-actions';
           var delBtn = document.createElement('button');
-          delBtn.textContent = '刪除';
           delBtn.type = 'button';
+          delBtn.textContent = '刪除';
           delBtn.addEventListener('click', function () {
-            if (LOCAL_ONLY || !r.row) {
-              var records2 = getRecords();
-              var target = -1;
-              for (var i = 0; i < records2.length; i++) {
-                if (records2[i].time === r.time && records2[i].orderNo === r.orderNo) { target = i; break; }
-              }
-              if (target !== -1) records2.splice(target, 1);
-              saveRecords(records2);
-              render();
-              showToast('已刪除該筆記錄');
-            } else {
-              apiRequest('delete', { row: r.row }).then(function (res) {
-                if (res && res.ok) {
-                  if (Array.isArray(res.records)) saveRecords(res.records);
-                  render();
-                  showToast('已刪除該筆記錄');
-                } else {
-                  showToast('刪除失敗：' + (res && res.error ? res.error : '未知錯誤'));
-                }
-              }).catch(function () {
-                showToast('連線失敗，無法刪除');
-              });
-            }
+            if (!confirm('確定刪除這筆：' + r.name + '｜' + r.orderNo + '｜' + r.item + '？')) return;
+            delete selected[r.id];
+            records = records.filter(function (x) { return x.id !== r.id; });
+            pruneEmptyBatches();
+            saveRecords();
+            renderAll();
+            showToast('已刪除');
           });
           tdAct.appendChild(delBtn);
+
           tr.appendChild(tdCheck);
           tr.appendChild(tdTime);
           tr.appendChild(tdName);
           tr.appendChild(tdOrder);
           tr.appendChild(tdItem);
           tr.appendChild(tdAmount);
+          tr.appendChild(tdStatus);
           tr.appendChild(tdAct);
-          recordsBody.appendChild(tr);
+          tbody.appendChild(tr);
         });
       }
 
-      nameFilter.addEventListener('click', function (e) {
-        var btn = e.target.closest('.filter-btn');
-        if (!btn) return;
-        currentFilter = btn.dataset.name;
-        nameFilter.querySelectorAll('.filter-btn').forEach(function (b) {
-          b.classList.toggle('active', b === btn);
+      function pruneEmptyBatches() {
+        var before = batches.length;
+        batches = batches.filter(function (b) {
+          return records.some(function (r) { return r.batchId === b.id; });
         });
-        render();
-      });
-
-      function showToast(msg) {
-        toast.textContent = msg;
-        toast.classList.add('show');
-        clearTimeout(showToast._t);
-        showToast._t = setTimeout(function () { toast.classList.remove('show'); }, 2200);
+        if (batches.length !== before) saveBatches();
       }
 
-      function showSuccess(msg) {
-        successBanner.textContent = msg;
-        successBanner.style.display = 'block';
-        clearTimeout(showSuccess._t);
-        showSuccess._t = setTimeout(function () { successBanner.style.display = 'none'; }, 4000);
+      function renderBatches() {
+        var list = $('batchList');
+        list.innerHTML = '';
+        if (!batches.length) {
+          list.innerHTML = '<div class="empty">尚無集運批次。到「包裹總覽」勾選要一起寄的包裹，再點「建立集運批次」。</div>';
+          return;
+        }
+        batches.slice().sort(function (a, b) { return b.createdAt - a.createdAt; }).forEach(function (b) {
+          list.appendChild(buildBatchCard(b));
+        });
       }
 
-      function copyText(text, btn) {
-        function done() {
-          if (btn) { btn.textContent = '已複製'; setTimeout(function () { btn.textContent = '複製'; }, 1500); }
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(); });
-        } else {
-          fallbackCopy();
-        }
-        function fallbackCopy() {
-          var ta = document.createElement('textarea');
-          ta.value = text;
-          document.body.appendChild(ta);
-          ta.select();
-          try { document.execCommand('copy'); done(); } catch (e) { showToast('複製失敗'); }
-          document.body.removeChild(ta);
-        }
-      }
+      function buildBatchCard(b) {
+        var card = document.createElement('div');
+        card.className = 'batch-card';
+        var recs = records.filter(function (r) { return r.batchId === b.id; });
+        var total = recs.length;
+        var arrived = recs.filter(function (r) { return r.arrived; }).length;
+        var sum = 0;
+        recs.forEach(function (r) { sum += toNum(r.amount); });
 
-      document.querySelectorAll('.btn-copy').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var target = btn.getAttribute('data-target');
-          var checks = document.querySelectorAll('.row-check:checked');
-          if (checks.length === 0) {
-            showToast('請先勾選要複製的紀錄');
-            return;
-          }
-          var values = [];
-          checks.forEach(function (c) {
-            var val = target === 'orderNo' ? c.dataset.orderNo : c.dataset.item;
-            if (val) values.push(val);
+        var statusText, statusCls;
+        if (total === 0) { statusText = '空批次'; statusCls = 'badge-muted'; }
+        else if (arrived === total) { statusText = '已到貨'; statusCls = 'badge-green'; }
+        else if (arrived > 0) { statusText = '部分到貨'; statusCls = 'badge-orange'; }
+        else { statusText = '運送中'; statusCls = 'badge-blue'; }
+
+        var html = '<div class="batch-head">'
+          + '<div>'
+          + '<div class="batch-title">' + esc(b.name) + '<span class="badge ' + statusCls + '">' + statusText + '</span></div>'
+          + '<div class="batch-meta">建立：' + fmtTime(b.createdAt) + '　｜　共 ' + total + ' 件　｜　已到貨 ' + arrived + ' 件　｜　總金額 ¥' + round2(sum) + '</div>'
+          + '</div>'
+          + '<div class="batch-actions">'
+          + '<button type="button" class="btn-sm btn-green" data-act="print">列印核對單</button>'
+          + '<button type="button" class="btn-sm" data-act="csv">匯出 CSV</button>'
+          + '<button type="button" class="btn-sm" data-act="arrived">全數到貨</button>'
+          + '<button type="button" class="btn-sm btn-danger" data-act="undo">退回未集運</button>'
+          + '</div>'
+          + '</div>';
+
+        var groups = {};
+        recs.forEach(function (r) { (groups[r.name] = groups[r.name] || []).push(r); });
+        var groupNames = Object.keys(groups).sort();
+        html += '<div class="batch-records">';
+        groupNames.forEach(function (nm) {
+          html += '<div class="batch-group-title">' + esc(nm) + '</div>';
+          groups[nm].forEach(function (r) {
+            html += '<label class="batch-row' + (r.arrived ? ' arrived' : '') + '">'
+              + '<input type="checkbox" data-id="' + esc(r.id) + '"' + (r.arrived ? ' checked' : '') + '>'
+              + '<span class="row-order">' + esc(r.orderNo) + '</span>'
+              + '<span class="row-item">' + esc(r.item) + '</span>'
+              + '<span class="row-amount">¥' + esc(r.amount) + '</span>'
+              + '<span class="row-mark">' + (r.arrived ? '✓ 已到貨' : '') + '</span>'
+              + '</label>';
           });
-          if (values.length === 0) {
-            showToast('勾選紀錄無資料');
-            return;
-          }
-          copyText(values.join('\n'), btn);
         });
-      });
+        html += '</div>';
 
-      document.getElementById('selectAll').addEventListener('change', function (e) {
-        var checks = document.querySelectorAll('.row-check');
-        checks.forEach(function (c) { c.checked = e.target.checked; });
-      });
+        var pending = records.filter(function (r) { return r.batchId == null; });
+        var opts = pending.map(function (r) {
+          return '<option value="' + esc(r.id) + '">' + esc(r.name) + '｜' + esc(r.orderNo) + '｜' + esc(r.item) + '</option>';
+        }).join('');
+        html += '<div class="batch-add">'
+          + '<select class="add-select"><option value="">＋ 加入未集運包裹…</option>' + opts + '</select>'
+          + '<button type="button" class="btn-sm" data-act="add">加入</button>'
+          + '</div>';
 
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        nameError.textContent = '';
-        var selectedName = nameSelect.value;
-        if (!selectedName) {
-          nameError.textContent = '請選擇姓名';
-          return;
-        }
-        if (!orderNo.value.trim() || !item.value.trim() || !amount.value.trim()) {
-          nameError.textContent = '請完整填寫單號、品項與金額';
-          return;
-        }
+        card.innerHTML = html;
 
-        var records = getRecords();
-        var inputOrder = orderNo.value.trim();
-        var dup = records.find(function (r) { return r.orderNo === inputOrder; });
-        if (dup) {
-          nameError.textContent = '單號 ' + inputOrder + ' 已存在（' + dup.name + '，' + formatTime(dup.time) + '），請確認是否重複輸入';
-          return;
-        }
-
-        if (LOCAL_ONLY) {
-          records.push({
-            time: Date.now(),
-            name: selectedName,
-            orderNo: inputOrder,
-            item: item.value.trim(),
-            amount: amount.value.trim()
+        card.querySelectorAll('.batch-row input[type="checkbox"]').forEach(function (cb) {
+          cb.addEventListener('change', function () {
+            var r = findRec(cb.dataset.id);
+            if (!r) return;
+            r.arrived = cb.checked;
+            saveRecords();
+            renderAll();
           });
-          saveRecords(records);
-          render();
-          showSuccess('已提交：' + selectedName + ' — ' + inputOrder);
-        } else {
-          apiRequest('add', {
-            name: selectedName,
-            orderNo: inputOrder,
-            item: item.value.trim(),
-            amount: amount.value.trim()
-          }).then(function (res) {
-            if (res && res.ok) {
-              if (Array.isArray(res.records)) saveRecords(res.records);
-              render();
-              showSuccess('已提交：' + selectedName + ' — ' + inputOrder);
-            } else if (res && res.error === 'duplicate') {
-              nameError.textContent = res.message || ('單號 ' + inputOrder + ' 已存在，請確認是否重複輸入');
-            } else {
-              nameError.textContent = '提交失敗：' + (res && res.error ? res.error : '未知錯誤');
+        });
+        card.querySelectorAll('[data-act]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var act = btn.dataset.act;
+            if (act === 'print') { printBatch(b.id); }
+            else if (act === 'csv') { exportBatchCSV(b.id); }
+            else if (act === 'arrived') {
+              recs.forEach(function (r) { r.arrived = true; });
+              saveRecords();
+              renderAll();
+              showToast('已將 ' + b.name + ' 全部標記為到貨');
             }
-          }).catch(function () {
-            nameError.textContent = '連線失敗，無法提交（請檢查 API 設定）';
+            else if (act === 'undo') { undoBatch(b.id); }
+            else if (act === 'add') {
+              var sel = card.querySelector('.add-select');
+              if (!sel.value) { showToast('請先選擇要加入的包裹'); return; }
+              var r = findRec(sel.value);
+              if (r) { r.batchId = b.id; r.arrived = false; saveRecords(); renderAll(); showToast('已加入批次'); }
+            }
           });
-        }
-        form.reset();
-        nameSelect.value = '';
-      });
+        });
+        return card;
+      }
 
-      document.getElementById('btnClear').addEventListener('click', function () {
-        form.reset();
-        nameError.textContent = '';
-        nameSelect.value = '';
-      });
+      function undoBatch(bid) {
+        var b = findBatch(bid);
+        if (!b) return;
+        if (!confirm('將「' + b.name + '」的包裹全部退回「待集運」並刪除該批次？')) return;
+        records.forEach(function (r) { if (r.batchId === bid) { r.batchId = null; r.arrived = false; } });
+        batches = batches.filter(function (x) { return x.id !== bid; });
+        saveRecords();
+        saveBatches();
+        renderAll();
+        showToast('已退回未集運');
+      }
 
-      document.getElementById('btnExport').addEventListener('click', function () {
-        var checks = document.querySelectorAll('.row-check:checked');
-        if (checks.length === 0) {
-          showToast('請先勾選要匯出的紀錄');
-          return;
-        }
-        var all = getRecords();
-        var rows = [['時間', '姓名', '單號', '品項', '金額']];
-        checks.forEach(function (c) {
-          var rec = all.find(function (r) { return r.orderNo === c.dataset.orderNo; });
-          if (rec) rows.push([formatTime(rec.time), rec.name, rec.orderNo, rec.item, rec.amount]);
+      function printBatch(bid) {
+        var b = findBatch(bid);
+        var recs = records.filter(function (r) { return r.batchId === bid; });
+        var arrived = recs.filter(function (r) { return r.arrived; }).length;
+        var sum = 0;
+        recs.forEach(function (r) { sum += toNum(r.amount); });
+        var groups = {};
+        recs.forEach(function (r) { (groups[r.name] = groups[r.name] || []).push(r); });
+        var groupNames = Object.keys(groups).sort();
+
+        var html = '<div class="print-sheet">';
+        html += '<h1>淘寶集運核對單</h1>';
+        html += '<div class="print-meta">批次：' + esc(b ? b.name : '') + '　建立：' + (b ? fmtTime(b.createdAt) : '') + '</div>';
+        html += '<div class="print-meta">包裹數：' + recs.length + ' 件　已到貨：' + arrived + ' 件　總金額：¥' + round2(sum) + '</div>';
+        html += '<div class="print-meta">到貨時請對照下表逐件勾選，未勾選即為缺少。</div>';
+        groupNames.forEach(function (nm) {
+          html += '<div class="print-group">' + esc(nm) + '</div>';
+          html += '<table class="print-table">'
+            + '<tr><th class="col-check">☐</th><th>單號</th><th>品項</th><th class="col-amt">金額</th><th class="col-check">到貨</th></tr>';
+          groups[nm].forEach(function (r) {
+            html += '<tr>'
+              + '<td class="col-check"></td>'
+              + '<td class="mono">' + esc(r.orderNo) + '</td>'
+              + '<td>' + esc(r.item) + '</td>'
+              + '<td class="col-amt">' + esc(r.amount) + '</td>'
+              + '<td class="col-check">' + (r.arrived ? '✓' : '') + '</td>'
+              + '</tr>';
+          });
+          html += '</table>';
+        });
+        html += '<div class="print-foot">共 ' + recs.length + ' 件　核對人員：____________　日期：____________</div>';
+        html += '</div>';
+        $('printArea').innerHTML = html;
+        window.print();
+      }
+
+      function exportBatchCSV(bid) {
+        var recs = records.filter(function (r) { return r.batchId === bid; });
+        if (!recs.length) { showToast('批次沒有包裹'); return; }
+        var b = findBatch(bid);
+        var rows = [['時間', '姓名', '單號', '品項', '金額', '到貨']];
+        recs.forEach(function (r) {
+          rows.push([fmtTime(r.time), r.name, r.orderNo, r.item, r.amount, r.arrived ? '是' : '否']);
         });
         var csv = rows.map(function (row) {
           return row.map(function (cell) {
@@ -585,25 +782,156 @@ var STORAGE_KEY = 'taobao_shipment_records';
         var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = '淘寶集運單_' + new Date().toISOString().slice(0, 10) + '.csv';
+        a.download = (b ? b.name : '集運批次') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(a.href);
-        showToast('CSV 已匯出 ' + checks.length + ' 筆');
-      });
-
-      buildNameSelect();
-      if (LOCAL_ONLY) {
-        render();
-      } else {
-        loadFromRemote().then(function () {
-          render();
-        }).catch(function () {
-          render();
-          showToast('遠端載入失敗，顯示本機資料');
-        });
+        showToast('CSV 已匯出 ' + recs.length + ' 筆');
       }
+
+      function createBatchFromSelected() {
+        var ids = [];
+        for (var id in selected) if (selected[id]) ids.push(id);
+        var eligible = ids.filter(function (id) {
+          var r = findRec(id);
+          return r && r.batchId == null;
+        });
+        if (!eligible.length) { showToast('請先勾選未集運的包裹'); return; }
+        var batch = {
+          id: 'b' + Date.now(),
+          name: '集運批次 ' + (batches.length + 1),
+          createdAt: Date.now()
+        };
+        batches.push(batch);
+        records.forEach(function (r) {
+          if (eligible.indexOf(r.id) !== -1) { r.batchId = batch.id; r.arrived = false; }
+        });
+        saveBatches();
+        saveRecords();
+        selected = {};
+        renderAll();
+        switchTab('batches');
+        showToast('已建立 ' + batch.name + '（' + eligible.length + ' 件），可列印核對單');
+      }
+
+      function backup() {
+        var data = { version: 2, exportedAt: Date.now(), batches: batches, records: records };
+        var blob = new Blob(['\ufeff' + JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '淘寶集運備份_' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        showToast('備份已匯出');
+      }
+
+      function importBackup(file) {
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var data = JSON.parse(reader.result);
+            if (!data || !Array.isArray(data.records)) throw new Error('格式錯誤');
+            var recs = data.records.map(function (r, i) {
+              if (!r.id) r.id = 'i' + Date.now() + '_' + i;
+              if (r.arrived == null) r.arrived = false;
+              if (r.batchId == null) r.batchId = null;
+              return r;
+            });
+            records = recs;
+            batches = Array.isArray(data.batches) ? data.batches : [];
+            saveRecords();
+            saveBatches();
+            renderAll();
+            showToast('匯入完成：' + records.length + ' 筆');
+          } catch (err) {
+            showToast('匯入失敗：' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function renderAll() {
+        renderNameList();
+        renderStats();
+        renderRecords();
+        renderBatches();
+      }
+
+      function init() {
+        document.querySelectorAll('.tab-btn').forEach(function (b) {
+          b.addEventListener('click', function () { switchTab(b.dataset.tab); });
+        });
+
+        $('registerForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var err = $('formError');
+          err.textContent = '';
+          var orderNo = $('orderNo').value.trim();
+          var item = $('item').value.trim();
+          var amount = $('amount').value.trim();
+          var name = $('nameInput').value.trim();
+          if (!orderNo || !item || !amount || !name) {
+            err.textContent = '請完整填寫單號、品項、金額與姓名';
+            return;
+          }
+          var dup = records.find(function (r) { return r.orderNo === orderNo; });
+          if (dup) {
+            err.textContent = '單號 ' + orderNo + ' 已存在（' + dup.name + '，' + fmtTime(dup.time) + '），請確認是否重複';
+            return;
+          }
+          records.push({
+            id: 'r' + Date.now() + '_' + records.length,
+            time: Date.now(),
+            name: name,
+            orderNo: orderNo,
+            item: item,
+            amount: amount,
+            batchId: null,
+            arrived: false
+          });
+          saveRecords();
+          $('registerForm').reset();
+          renderAll();
+          showToast('已登錄：' + name + ' — ' + orderNo);
+          $('orderNo').focus();
+        });
+
+        $('btnClear').addEventListener('click', function () {
+          $('registerForm').reset();
+          $('formError').textContent = '';
+        });
+
+        $('btnCreateBatch').addEventListener('click', createBatchFromSelected);
+
+        $('selectAll').addEventListener('change', function (e) {
+          document.querySelectorAll('#recordsBody .row-check:not(:disabled)').forEach(function (c) {
+            c.checked = e.target.checked;
+            if (c.checked) selected[c.dataset.id] = true; else delete selected[c.dataset.id];
+          });
+          updateSelectionUI();
+        });
+
+        $('recordFilters').addEventListener('click', function (e) {
+          var btn = e.target.closest('.filter-btn');
+          if (!btn) return;
+          currentFilter = btn.dataset.name;
+          renderStats();
+          renderRecords();
+        });
+
+        $('btnBackup').addEventListener('click', backup);
+        $('importFile').addEventListener('change', function (e) {
+          if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
+          e.target.value = '';
+        });
+
+        renderAll();
+      }
+
+      init();
     })();
   </script>
 </body>
