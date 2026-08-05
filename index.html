@@ -298,9 +298,12 @@
     <div class="login-card">
       <h2>選擇你的姓名</h2>
       <p>登入後只會看到自己登錄的包裹與自己的統計。</p>
-      <p>選擇姓名後輸入您的密碼。</p>
-      <input type="password" id="userPass" placeholder="請輸入密碼" style="width:100%;padding:8px;margin:8px 0;">
       <div class="name-btns" id="loginNameBtns"></div>
+      <div id="pwSection" style="display:none;margin-top:12px;">
+        <input type="password" id="userPass" placeholder="請輸入密碼" style="width:100%;padding:8px;">
+        <button type="button" id="btnLogin" class="btn-primary" style="width:100%;margin-top:8px;">登入</button>
+        <button type="button" id="btnCancelUser" style="width:100%;margin-top:8px;">取消</button>
+      </div>
     </div>
   </div>
 
@@ -625,29 +628,54 @@
         var sw = $('btnSwitchUser');
         if (sw) sw.addEventListener('click', logout);
       }
+      var selectedUserName = null;
       function renderLogin() {
         var box = $('loginNameBtns');
         box.innerHTML = '';
+        var pwSection = $('pwSection');
+        if (pwSection) pwSection.style.display = 'none';
         var pass = $('userPass');
         if (pass) pass.value = '';
+        selectedUserName = null;
         NAMES.forEach(function (n) {
           var b = document.createElement('button');
           b.type = 'button';
           b.className = 'name-btn';
           b.textContent = n;
           b.addEventListener('click', function () {
+            selectedUserName = n;
+            var pwSection = $('pwSection');
+            var pass = $('userPass');
+            if (pwSection) pwSection.style.display = 'block';
+            if (pass) { pass.value = ''; pass.focus(); }
+            // If no password required, login immediately
             var requiredPass = USER_PASSWORDS[n] || '';
-            var entered = pass ? pass.value : '';
-            var isAdmin = (ADMIN_NAMES.indexOf(n) >= 0) && (entered === requiredPass);
-            if (requiredPass && entered !== requiredPass) {
-              showToast('密碼錯誤，請重新輸入');
-              return;
+            if (!requiredPass) {
+              doLogin();
             }
-            chooseUser(n, isAdmin);
           });
           box.appendChild(b);
         });
         $('loginOverlay').style.display = 'flex';
+      }
+      function doLogin() {
+        if (!selectedUserName) return;
+        var pass = $('userPass');
+        var entered = pass ? pass.value : '';
+        var requiredPass = USER_PASSWORDS[selectedUserName] || '';
+        if (requiredPass && entered !== requiredPass) {
+          showToast('密碼錯誤，請重新輸入');
+          return;
+        }
+        var isAdmin = (ADMIN_NAMES.indexOf(selectedUserName) >= 0) && (entered === requiredPass);
+        // Reset UI
+         var pwSection = $('pwSection');
+        if (pwSection) pwSection.style.display = 'none';
+        if (pass) pass.value = '';
+        var name = selectedUserName;
+        selectedUserName = null;
+        $('loginOverlay').style.display = 'none';
+        chooseUser(name, isAdmin);
       }
       function chooseUser(name, admin) {
         currentUser = { name: name, admin: admin };
@@ -1217,6 +1245,16 @@
         $('importFile').addEventListener('change', function (e) {
           if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
           e.target.value = '';
+        });
+
+        var btnLogin = $('btnLogin');
+        if (btnLogin) btnLogin.addEventListener('click', doLogin);
+
+        var btnCancel = $('btnCancelUser');
+        if (btnCancel) btnCancel.addEventListener('click', function () {
+          var pwSection = $('pwSection');
+          if (pwSection) pwSection.style.display = 'none';
+          selectedUserName = null;
         });
 
         currentUser = loadUser();
