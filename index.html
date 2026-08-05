@@ -807,13 +807,35 @@
         if (!adminActions) return;
         if (n > 0 && isAdmin()) {
           adminActions.innerHTML = ' '
-            + '<button type="button" class="btn-sm" id="btnDeleteSelected" style="background:#e74c3c;color:#fff;">批次刪除 ' + n + ' 筆</button>'
+            + '<button type="button" class="btn-sm" id="btnCopyOrders" style="background:#3498db;color:#fff;">複製單號 ' + n + ' 筆</button>'
+            + '<button type="button" class="btn-sm" id="btnCopyItems" style="background:#3498db;color:#fff;margin-left:8px;">複製品項 ' + n + ' 筆</button>'
+            + '<button type="button" class="btn-sm" id="btnDeleteSelected" style="background:#e74c3c;color:#fff;margin-left:8px;">批次刪除 ' + n + ' 筆</button>'
             + '<button type="button" class="btn-sm" id="btnPrintAll" style="background:#2c3e50;color:#fff;margin-left:8px;">列印全部</button>';
+          $('btnCopyOrders').addEventListener('click', copySelectedOrders);
+          $('btnCopyItems').addEventListener('click', copySelectedItems);
           $('btnDeleteSelected').addEventListener('click', deleteSelected);
           $('btnPrintAll').addEventListener('click', printAll);
         } else {
           adminActions.innerHTML = '';
         }
+      }
+      function copySelectedOrders() {
+        var ids = Object.keys(selected);
+        var texts = records.filter(function (r) { return ids.indexOf(r.id) >= 0; })
+          .map(function (r) { return r.orderNo; });
+        if (!texts.length) return;
+        navigator.clipboard.writeText(texts.join('\n')).then(function () {
+          showToast('已複製 ' + texts.length + ' 個單號（每行一個）');
+        }).catch(function () { showToast('複製失敗'); });
+      }
+      function copySelectedItems() {
+        var ids = Object.keys(selected);
+        var texts = records.filter(function (r) { return ids.indexOf(r.id) >= 0; })
+          .map(function (r) { return r.item; });
+        if (!texts.length) return;
+        navigator.clipboard.writeText(texts.join('\n')).then(function () {
+          showToast('已複製 ' + texts.length + ' 個品項（每行一個）');
+        }).catch(function () { showToast('複製失敗'); });
       }
       function deleteSelected() {
         var ids = Object.keys(selected);
@@ -928,30 +950,8 @@
           var tdOrder = document.createElement('td');
           tdOrder.className = 'mono';
           tdOrder.textContent = r.orderNo;
-          if (isAdmin()) {
-            var copyOrderBtn = document.createElement('button');
-            copyOrderBtn.type = 'button';
-            copyOrderBtn.className = 'copy-btn';
-            copyOrderBtn.textContent = '📋';
-            copyOrderBtn.title = '複製單號';
-            copyOrderBtn.addEventListener('click', function () {
-              navigator.clipboard.writeText(r.orderNo).then(function () { showToast('已複製單號'); }).catch(function () { showToast('複製失敗'); });
-            });
-            tdOrder.appendChild(copyOrderBtn);
-          }
           var tdItem = document.createElement('td');
           tdItem.textContent = r.item;
-          if (isAdmin()) {
-            var copyItemBtn = document.createElement('button');
-            copyItemBtn.type = 'button';
-            copyItemBtn.className = 'copy-btn';
-            copyItemBtn.textContent = '📋';
-            copyItemBtn.title = '複製品項';
-            copyItemBtn.addEventListener('click', function () {
-              navigator.clipboard.writeText(r.item).then(function () { showToast('已複製品項'); }).catch(function () { showToast('複製失敗'); });
-            });
-            tdItem.appendChild(copyItemBtn);
-          }
           var tdAmount = document.createElement('td');
           tdAmount.textContent = r.amount;
           var tdStatus = document.createElement('td');
