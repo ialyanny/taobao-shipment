@@ -375,6 +375,7 @@
             顯示 <b id="recordCount">0</b> 筆　｜　金額 <b id="recordAmount">0</b> 元
             <span id="selectedSummary">　｜　已勾選 <b id="selectedCount">0</b> 筆</span>
             <span id="batchHint" style="margin-left:12px;color:var(--muted);">勾選未集運的包裹後點「建立集運批次」，批次建立後可在「集運批次」分頁列印核對單。</span>
+            <span id="adminActions" style="margin-left:12px;"></span>
           </div>
           <div class="table-wrap">
             <table>
@@ -802,6 +803,68 @@
         var n = 0;
         for (var id in selected) if (selected[id]) n++;
         $('selectedCount').textContent = n;
+        var adminActions = $('adminActions');
+        if (!adminActions) return;
+        if (n > 0 && isAdmin()) {
+          adminActions.innerHTML = ' '
+            + '<button type="button" class="btn-sm" id="btnDeleteSelected" style="background:#e74c3c;color:#fff;">批次刪除 ' + n + ' 筆</button>'
+            + '<button type="button" class="btn-sm" id="btnPrintAll" style="background:#2c3e50;color:#fff;margin-left:8px;">列印全部</button>';
+          $('btnDeleteSelected').addEventListener('click', deleteSelected);
+          $('btnPrintAll').addEventListener('click', printAll);
+        } else {
+          adminActions.innerHTML = '';
+        }
+      }
+      function deleteSelected() {
+        var ids = Object.keys(selected);
+        if (!ids.length) return;
+        if (!confirm('確定刪除選中的 ' + ids.length + ' 筆包裹？此操作無法撤銷。')) return;
+        var toDelete = records.filter(function (r) { return ids.indexOf(r.id) >= 0; });
+        toDelete.forEach(function (r) {
+          persist(sb.from('records').delete().eq('id', r.id), '同步失敗：刪除包裹');
+        });
+        records = records.filter(function (r) { return ids.indexOf(r.id) === -1; });
+        selected = {};
+        pruneEmptyBatches();
+        cacheSave();
+        renderAll();
+        showToast('已批次刪除 ' + ids.length + ' 筆');
+      }
+      function printAll() {
+        var vis = visibleRecords();
+        var filtered = currentFilter === 'all'
+          ? vis.slice()
+          : vis.filter(function (r) { return r.name === currentFilter; });
+        filtered.sort(function (a, b) { return b.time - a.time; });
+        if (!filtered.length) { showToast('沒有可列印的資料'); return; }
+        var groups = {};
+        filtered.forEach(function (r) { (groups[r.name] = groups[r.name] || []).push(r); });
+        var groupNames = Object.keys(groups).sort();
+        var sum = 0;
+        filtered.forEach(function (r) { sum += toNum(r.amount); });
+        var html = '<div class="print-sheet">';
+        html += '<h1>淘寶集運全部包裹核對單</h1>';
+        html += '<div class="print-meta">列印時間：' + fmtTime(Date.now()) + '　共 ' + filtered.length + ' 筆　總金額：¥' + round2(sum) + '</div>';
+        html += '<div class="print-meta">請逐件核對，勾選已到貨。</div>';
+        groupNames.forEach(function (nm) {
+          html += '<div class="print-group">' + esc(nm) + '</div>';
+          html += '<table class="print-table">'
+            + '<tr><th class="col-check">☐</th><th>單號</th><th>品項</th><th class="col-amt">金額</th><th class="col-check">到貨</th></tr>';
+          groups[nm].forEach(function (r) {
+            html += '<tr>'
+              + '<td class="col-check"></td>'
+              + '<td class="mono">' + esc(r.orderNo) + '</td>'
+              + '<td>' + esc(r.item) + '</td>'
+              + '<td class="col-amt">' + esc(r.amount) + '</td>'
+              + '<td class="col-check"></td>'
+              + '</tr>';
+          });
+          html += '</table>';
+        });
+        html += '<div class="print-foot">共 ' + filtered.length + ' 件　核對人員：____________　日期：____________</div>';
+        html += '</div>';
+        $('printArea').innerHTML = html;
+        window.print();
       }
 
       function renderRecords() {
@@ -865,8 +928,30 @@
           var tdOrder = document.createElement('td');
           tdOrder.className = 'mono';
           tdOrder.textContent = r.orderNo;
+          if (isAdmin()) {
+            var copyOrderBtn = document.createElement('button');
+            copyOrderBtn.type = 'button';
+            copyOrderBtn.className = 'copy-btn';
+            copyOrderBtn.textContent = '📋';
+            copyOrderBtn.title = '複製單號';
+            copyOrderBtn.addEventListener('click', function () {
+              navigator.clipboard.writeText(r.orderNo).then(function () { showToast('已複製單號'); }).catch(function () { showToast('複製失敗'); });
+            });
+            tdOrder.appendChild(copyOrderBtn);
+          }
           var tdItem = document.createElement('td');
           tdItem.textContent = r.item;
+          if (isAdmin()) {
+            var copyItemBtn = document.createElement('button');
+            copyItemBtn.type = 'button';
+            copyItemBtn.className = 'copy-btn';
+            copyItemBtn.textContent = '📋';
+            copyItemBtn.title = '複製品項';
+            copyItemBtn.addEventListener('click', function () {
+              navigator.clipboard.writeText(r.item).then(function () { showToast('已複製品項'); }).catch(function () { showToast('複製失敗'); });
+            });
+            tdItem.appendChild(copyItemBtn);
+          }
           var tdAmount = document.createElement('td');
           tdAmount.textContent = r.amount;
           var tdStatus = document.createElement('td');
