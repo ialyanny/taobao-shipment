@@ -298,8 +298,8 @@
     <div class="login-card">
       <h2>選擇你的姓名</h2>
       <p>登入後只會看到自己登錄的包裹與自己的統計。</p>
-      <p>管理員（武昌）請輸入管理員密碼後選擇姓名。</p>
-      <input type="password" id="adminPass" placeholder="管理員密碼" style="width:100%;padding:8px;margin:8px 0;">
+      <p>選擇姓名後輸入您的密碼。</p>
+      <input type="password" id="userPass" placeholder="請輸入密碼" style="width:100%;padding:8px;margin:8px 0;">
       <div class="name-btns" id="loginNameBtns"></div>
     </div>
   </div>
@@ -419,8 +419,18 @@
       var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51dGtvY290Ym5jcXhndmprZnhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTcwMjcsImV4cCI6MjEwMTQzMzAyN30.yfvXV2dvYhS8cTLgyir-ddaVb5oqbYIDyjngINVccfE';
       var CACHE_KEY = 'ts_sync_cache_v1';
       var USER_KEY = 'ts_user';
-      var ADMIN_PASS = '1026';
-      var ADMIN_NAME = '武昌';
+      var USER_PASSWORDS = {
+        '俊賢': '881',
+        '榮吉': '520',
+        '小惠': '527',
+        'Hebe': '0308',
+        '弟': '527',
+        '妹': '0203',
+        '育源': '',
+        '武昌': '1026',
+        '曉君': '1026'
+      };
+      var ADMIN_NAMES = ['武昌', '曉君'];
       var NAMES = ['俊賢', '榮吉', '小惠', 'Hebe', '弟', '妹', '育源', '武昌', '曉君'];
       var SEED_RECORDS = [{"time":1784319875000,"name":"弟","orderNo":"435272535982156","item":"褲子","amount":"0"},{"time":1783189726000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠背","amount":"47.62"},{"time":1783550938000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠","amount":"47.62"},{"time":1784296380000,"name":"榮吉","orderNo":"9822789936997","item":"衣物除味噴霧","amount":"0"},{"time":1782723847000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783292462000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"1.89元"},{"time":1783337040000,"name":"榮吉","orderNo":"773430298305689","item":"眼線筆","amount":"0"},{"time":1783873464000,"name":"榮吉","orderNo":"435266561020411","item":"67W快充線","amount":"0"},{"time":1783952041000,"name":"榮吉","orderNo":"JT3170121905771","item":"測電筆","amount":"0"},{"time":1783897780000,"name":"俊賢","orderNo":"YT7631445333130","item":"收納盒","amount":"2.01元"},{"time":1784207750000,"name":"榮吉","orderNo":"9822779604858","item":"定妝噴霧","amount":"0"},{"time":1782228397000,"name":"俊賢","orderNo":"773426545571792","item":"陶瓷蒸籠","amount":"24.3元"},{"time":1782235638000,"name":"俊賢","orderNo":"79014009539615","item":"冰霸杯","amount":"18.82"},{"time":1782286450000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1782286492000,"name":"俊賢","orderNo":"YT8879717510828","item":"轉接頭","amount":"13.5"},{"time":1782338541000,"name":"弟","orderNo":"773427544569349","item":"保護貼","amount":"14.35"},{"time":1784484941000,"name":"榮吉","orderNo":"435276290900047","item":"吃瓜神器","amount":"0"},{"time":1782513459000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"5元"},{"time":1783189778000,"name":"俊賢","orderNo":"73600478536863","item":"手機殼","amount":"100.28"},{"time":1783189941000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1783189819000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783189886000,"name":"俊賢","orderNo":"YT8880636814779","item":"雨傘","amount":"11.06"},{"time":1784319898000,"name":"弟","orderNo":"YT7633193521247","item":"褲子1","amount":"0"},{"time":1784319956000,"name":"弟","orderNo":"773431765309218","item":"玻璃貼","amount":"0"},{"time":1784320053000,"name":"弟","orderNo":"773431758134690","item":"玻璃貼1","amount":"0"},{"time":1784320081000,"name":"弟","orderNo":"YT7632896479356","item":"充電器","amount":"0"},{"time":1784320106000,"name":"弟","orderNo":"79018899130936","item":"充電器1","amount":"0"},{"time":1784320129000,"name":"弟","orderNo":"YT7632898574570","item":"充電線","amount":"0"},{"time":1784737218000,"name":"Hebe","orderNo":"YT0057803917151","item":"衣服","amount":"100"},{"time":1785111442000,"name":"榮吉","orderNo":"JT3171664587193","item":"電競指套","amount":"0"},{"time":1785278413000,"name":"Hebe","orderNo":"770335249124628","item":"衣服","amount":"100"},{"time":1785332469000,"name":"俊賢","orderNo":"9822835052492","item":"香薰","amount":"0.99"},{"time":1785332515000,"name":"俊賢","orderNo":"79020255221536","item":"藍芽接收器","amount":"11.04"},{"time":1785332590000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785332657000,"name":"俊賢","orderNo":"JT3170599843390","item":"耳機轉接線","amount":"7.69"},{"time":1783884033000,"name":"榮吉","orderNo":"JT3170097566028","item":"去污膏","amount":"0"},{"time":1785481461000,"name":"弟","orderNo":"SF5112962902449","item":"保護套","amount":"0"},{"time":1785481487000,"name":"弟","orderNo":"79021580267193","item":"充電線","amount":"0"},{"time":1785665628000,"name":"榮吉","orderNo":"79022871145996","item":"拼豆補充包","amount":"0"},{"time":1785667688000,"name":"榮吉","orderNo":"773434710903862","item":"藍芽耳機","amount":"0"},{"time":1785695129000,"name":"榮吉","orderNo":"9822899066964","item":"耳塞","amount":"0"},{"time":1785695178000,"name":"榮吉","orderNo":"435295643351172","item":"耳洞清潔器","amount":"0"},{"time":1784635685000,"name":"榮吉","orderNo":"JT3171090028762","item":"外出背包","amount":"0"},{"time":1784660978000,"name":"榮吉","orderNo":"9822818624350","item":"香氛","amount":"0"},{"time":1785749782000,"name":"俊賢","orderNo":"79127598165487","item":"頭盔耳機","amount":"57.34"},{"time":1785749845000,"name":"俊賢","orderNo":"JT5506335502948","item":"麥克風","amount":"5.4"},{"time":1785749959000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785750016000,"name":"俊賢","orderNo":"79020255221536","item":"5.3音頻接收器","amount":"11.04"},{"time":1785760133000,"name":"Hebe","orderNo":"79022917754324","item":"衣服","amount":"100"},{"time":1785777651000,"name":"榮吉","orderNo":"773434828480463","item":"美甲磁鐵棒","amount":"0"},{"time":1785777702000,"name":"榮吉","orderNo":"9822904532251","item":"拼豆筆","amount":"0"},{"time":1785795133000,"name":"俊賢","orderNo":"JT5511428018522","item":"雨衣","amount":"11.97"},{"time":1785795199000,"name":"俊賢","orderNo":"JT5511585053529","item":"外套","amount":"13.8"},{"time":1785795261000,"name":"俊賢","orderNo":"JT5511614179773","item":"藍芽接收器","amount":"24.04"},{"time":1785835977000,"name":"榮吉","orderNo":"YT7636433267767","item":"拼豆針","amount":"0"},{"time":1785836009000,"name":"榮吉","orderNo":"773434948184628","item":"刮鬍刀","amount":"0"},{"time":1785837467000,"name":"榮吉","orderNo":"9822909716382","item":"圖釘1","amount":"0"},{"time":1785837541000,"name":"榮吉","orderNo":"773434976323581","item":"圖釘2","amount":"0"}];
 
@@ -618,7 +628,7 @@
       function renderLogin() {
         var box = $('loginNameBtns');
         box.innerHTML = '';
-        var pass = $('adminPass');
+        var pass = $('userPass');
         if (pass) pass.value = '';
         NAMES.forEach(function (n) {
           var b = document.createElement('button');
@@ -626,7 +636,13 @@
           b.className = 'name-btn';
           b.textContent = n;
           b.addEventListener('click', function () {
-            var isAdmin = pass && pass.value === ADMIN_PASS && n === ADMIN_NAME;
+            var requiredPass = USER_PASSWORDS[n] || '';
+            var entered = pass ? pass.value : '';
+            var isAdmin = (ADMIN_NAMES.indexOf(n) >= 0) && (entered === requiredPass);
+            if (requiredPass && entered !== requiredPass) {
+              showToast('密碼錯誤，請重新輸入');
+              return;
+            }
             chooseUser(n, isAdmin);
           });
           box.appendChild(b);
