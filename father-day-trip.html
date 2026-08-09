@@ -1,0 +1,160 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>父親節聚餐一日遊</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans TC',sans-serif;background:linear-gradient(180deg,#87CEEB 0%,#E8F5E9 50%,#C8E6C9 100%);min-height:100vh;overflow-x:hidden}
+.container{max-width:1200px;margin:0 auto;padding:20px;position:relative}
+.title-banner{text-align:center;margin-bottom:30px;animation:fadeInDown .8s ease-out}
+.title-banner h1{font-size:2.8em;font-weight:900;color:#5D4037;text-shadow:2px 2px 4px rgba(0,0,0,.1);background:linear-gradient(135deg,#8D6E63,#5D4037);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.title-banner .subtitle{font-size:1.2em;color:#795548;margin-top:5px}
+.journey-path{position:relative;padding:20px 0}
+.path-line{position:absolute;left:50%;top:0;bottom:0;width:8px;background:linear-gradient(180deg,#8D6E63,#A1887F,#8D6E63);border-radius:4px;transform:translateX(-50%);z-index:1}
+.path-line::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:20px;height:100%;background:repeating-linear-gradient(180deg,transparent,transparent 10px,rgba(139,119,101,.3) 10px,rgba(139,119,101,.3) 20px)}
+.stop{display:flex;align-items:center;margin-bottom:40px;opacity:0;transform:translateY(30px);animation:fadeInUp .6s ease-out forwards}
+.stop:nth-child(1){animation-delay:.2s}.stop:nth-child(2){animation-delay:.4s}.stop:nth-child(3){animation-delay:.6s}
+.stop:nth-child(4){animation-delay:.8s}.stop:nth-child(5){animation-delay:1s}.stop:nth-child(6){animation-delay:1.2s}
+.stop:nth-child(odd){flex-direction:row}.stop:nth-child(even){flex-direction:row-reverse}
+.stop-content{width:45%;background:#fff;border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.1);position:relative;transition:all .3s ease}
+.stop-content:hover{transform:translateY(-5px);box-shadow:0 15px 40px rgba(0,0,0,.15)}
+.stop:nth-child(odd) .stop-content{margin-right:auto;margin-left:0}
+.stop:nth-child(even) .stop-content{margin-left:auto;margin-right:0}
+.stop-node{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#8D6E63,#5D4037);display:flex;align-items:center;justify-content:center;z-index:2;margin:0 20px;box-shadow:0 5px 20px rgba(93,64,55,.4);animation:pulse 2s infinite}
+.stop-node.start{background:linear-gradient(135deg,#4CAF50,#2E7D32)}
+.stop-node.end{background:linear-gradient(135deg,#FF9800,#F57C00)}
+.stop-node .node-number{font-size:1.8em;font-weight:900;color:#fff;text-shadow:1px 1px 2px rgba(0,0,0,.2)}
+.stop-header{display:flex;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px dashed #E0E0E0}
+.stop-icon{font-size:2em;margin-right:10px}
+.stop-title{font-size:1.3em;font-weight:700;color:#5D4037}
+.time-badge{display:inline-block;background:linear-gradient(135deg,#FF9800,#F57C00);color:#fff;padding:5px 15px;border-radius:20px;font-weight:700;font-size:.95em;margin-bottom:10px;box-shadow:0 3px 10px rgba(255,152,0,.3)}
+.stop-details{list-style:none}
+.stop-details li{padding:6px 0;color:#616161;display:flex;align-items:center}
+.stop-details li::before{content:'\2713';color:#4CAF50;font-weight:bold;margin-right:8px}
+.warning{background:#FFF3E0;border-left:4px solid #FF9800;padding:8px 12px;margin-top:10px;border-radius:0 8px 8px 0;font-size:.9em;color:#E65100}
+.warning::before{content:'\26A0\FE0F '}
+.tips-section{background:linear-gradient(135deg,#FFF9C4,#FFF59D);border-radius:20px;padding:25px;margin-top:40px;box-shadow:0 10px 30px rgba(0,0,0,.1);animation:fadeInUp .6s ease-out 1.4s forwards;opacity:0}
+.tips-title{font-size:1.5em;font-weight:700;color:#F57F17;margin-bottom:15px;display:flex;align-items:center}
+.tips-title::before{content:'\1F4A1';margin-right:10px}
+.tips-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px}
+.tips-list li{background:#fff;padding:12px 15px;border-radius:10px;display:flex;align-items:flex-start;box-shadow:0 3px 10px rgba(0,0,0,.05)}
+.tips-list li::before{content:'\1F4CC';margin-right:10px}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1);box-shadow:0 5px 20px rgba(93,64,55,.4)}50%{transform:scale(1.05);box-shadow:0 8px 30px rgba(93,64,55,.6)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.cloud{position:fixed;background:#fff;border-radius:50px;opacity:.8;animation:float 6s ease-in-out infinite}
+.cloud::before,.cloud::after{content:'';position:absolute;background:#fff;border-radius:50%}
+.cloud-1{width:100px;height:40px;top:10%;left:5%;animation-delay:0s}
+.cloud-1::before{width:50px;height:50px;top:-25px;left:15px}
+.cloud-1::after{width:60px;height:60px;top:-30px;left:40px}
+.cloud-2{width:120px;height:45px;top:15%;right:10%;animation-delay:2s}
+.cloud-2::before{width:55px;height:55px;top:-28px;left:20px}
+.cloud-2::after{width:65px;height:65px;top:-32px;left:50px}
+@media(max-width:768px){.title-banner h1{font-size:1.8em}.stop{flex-direction:column!important}.stop-content{width:100%;margin:10px 0!important}.stop-node{margin:10px 0}.path-line{display:none}}
+</style>
+</head>
+<body>
+<div class="cloud cloud-1"></div>
+<div class="cloud cloud-2"></div>
+<div class="container">
+<div class="title-banner">
+<h1>&#x1F697; &#x7236;&#x89AA;&#x7BC0;&#x806F;&#x9910;&#x4E00;&#x65E5;&#x904A; &#x1F697;</h1>
+<p class="subtitle">14:00 &#x51FA;&#x767C; &#x2192; 20:30+ &#x5145;&#x5BE6;&#x6D6A;&#x6F2B;&#x9806;&#x6642;&#x5C45;&#x5BB6;</p>
+</div>
+<div class="journey-path">
+<div class="path-line"></div>
+
+<div class="stop">
+<div class="stop-content">
+<div class="stop-header"><span class="stop-icon">&#x1F680;</span><span class="stop-title">&#x51FA;&#x767C;</span></div>
+<span class="time-badge">14:00 &#x51FA;&#x767C;</span>
+<ul class="stop-details"><li>&#x5BB6;&#x4EBA;&#x96C6;&#x5408;&#x51FA;&#x767B;</li></ul>
+</div>
+<div class="stop-node start"><span class="node-number">&#x1F697;</span></div>
+<div class="stop-content" style="visibility:hidden"></div>
+</div>
+
+<div class="stop">
+<div class="stop-content" style="visibility:hidden"></div>
+<div class="stop-node"><span class="node-number">1</span></div>
+<div class="stop-content">
+<div class="stop-header"><span class="stop-icon">&#x2615;</span><span class="stop-title">&#x54C1;&#x7687;&#x5496;&#x5561;&#x89C0;&#x5149;&#x5DE5;&#x5EE3;</span></div>
+<span class="time-badge">14:50 - 15:50</span>
+<ul class="stop-details">
+<li>&#x8A8D;&#x8B58;&#x5496;&#x5561;&#x6587;&#x5316;</li>
+<li>&#x514D;&#x8CBB;&#x591A;&#x6B3E;&#x5496;&#x5561;&#x8A66;&#x98F2;</li>
+<li>&#x6311;&#x9078;&#x4F34;&#x624B;&#x79AE;</li>
+</ul>
+</div>
+</div>
+
+<div class="stop">
+<div class="stop-content">
+<div class="stop-header"><span class="stop-icon">&#x1F3F0;</span><span class="stop-title">&#x611B;&#x6728;&#x6751;&#x5730;&#x65B9;&#x6587;&#x5316;&#x9928;</span></div>
+<span class="time-badge">16:10 - 17:15</span>
+<ul class="stop-details">
+<li>&#x6A8F;&#x6728;&#x9999;&#x6C23;&#x74B0;&#x5883;</li>
+<li>&#x61F6;&#x820A;&#x6728;&#x5DE5;&#x5C55;&#x793A;</li>
+<li>&#x8DA3;&#x5473;&#x6728;&#x4F5C;&#x9AD4;&#x9A57;</li>
+<li>&#x8DA3;&#x5473;&#x4E92;&#x52D5;&#x904A;&#x61A9;</li>
+</ul>
+</div>
+<div class="stop-node"><span class="node-number">2</span></div>
+<div class="stop-content" style="visibility:hidden"></div>
+</div>
+
+<div class="stop">
+<div class="stop-content" style="visibility:hidden"></div>
+<div class="stop-node"><span class="node-number">3</span></div>
+<div class="stop-content">
+<div class="stop-header"><span class="stop-icon">&#x1F990;</span><span class="stop-title">&#x9AD4;&#x80B2;&#x9928;&#x6D77;&#x9BAE;</span></div>
+<span class="time-badge">17:25 - 18:55</span>
+<ul class="stop-details">
+<li>&#x4EAB;&#x7528;&#x5728;&#x5730;&#x5751;&#x73CE;&#x649E;&#x6D77;&#x9BAE;</li>
+<li>&#x9700;&#x73FE;&#x5834;&#x6392;&#x4F4D;</li>
+</ul>
+<div class="warning">&#x53EF;&#x80FD;&#x6703;&#x5F71;&#x97FF;&#x6C34;&#x821E;&#x6642;&#x9593;&#xFF0C;&#x5EFA;&#x6BCE;&#x63D0;&#x65E9;&#x9032;&#x5834;&#x6392;&#x968A;</div>
+</div>
+</div>
+
+<div class="stop">
+<div class="stop-content">
+<div class="stop-header"><span class="stop-icon">&#x1F3EF;</span><span class="stop-title">&#x6545;&#x5BAE;&#x5357;&#x9662;&#x6C34;&#x821E;</span></div>
+<span class="time-badge">19:30 - 20:30</span>
+<ul class="stop-details">
+<li>&#x6B23;&#x8CDE;&#x7167;&#x5149;&#x6C34;&#x5E55;&#x79C0;</li>
+<li>&#x53EF;&#x80FD;&#x932F;&#x904E;&#x7CBE;&#x5F69;&#x5834;&#x6B21;&#xFF0C;&#x8ACB;&#x7559;&#x610F;&#x6642;&#x9593;</li>
+</ul>
+</div>
+<div class="stop-node"><span class="node-number">4</span></div>
+<div class="stop-content" style="visibility:hidden"></div>
+</div>
+
+<div class="stop">
+<div class="stop-content" style="visibility:hidden"></div>
+<div class="stop-node end"><span class="node-number">&#x1F3E0;</span></div>
+<div class="stop-content">
+<div class="stop-header"><span class="stop-icon">&#x2728;</span><span class="stop-title">Finish</span></div>
+<span class="time-badge">20:30+ &#x5145;&#x5BE6;&#x6D6A;&#x6F2B;&#x9806;&#x6642;&#x5C45;&#x5BB6;</span>
+<ul class="stop-details"><li>&#x7D50;&#x675F;&#x7F8E;&#x597D;&#x4E00;&#x5929;</li></ul>
+</div>
+</div>
+
+</div>
+
+<div class="tips-section">
+<div class="tips-title">&#x51FA;&#x904A;&#x5C0F;&#x53EE;&#x5631;</div>
+<ul class="tips-list">
+<li>&#x9580;&#x7968;&#x8CC7;&#x8A0A;&#xFF1A;&#x611B;&#x6728;&#x6751;&#x9580;&#x7968; 100 &#x5143;/&#x4EBA;(&#x53EF;&#x6298;&#x62B5;&#x9928;&#x5167;&#x6D88;&#x8CBB; 50 &#x5143;)</li>
+<li>&#x6642;&#x6BB5;&#x6D41;&#x611F;&#xFF1A;&#x9AD4;&#x80B2;&#x9928;&#x6D77;&#x9BAE;&#x73FE;&#x5834;&#x6392;&#x4F4D;&#xFF0C;&#x8ACB;&#x8996;&#x72B6;&#x6CC1;&#x8ABF;&#x6574;&#x5F8C;&#x7E8C;&#x884C;&#x7A0B;</li>
+<li>&#x591C;&#x9593;&#x6C34;&#x821E;&#xFF1A;&#x6545;&#x5BAE;&#x5357;&#x9662;&#x6E5F;&#x77BF;&#x98A8;&#x5927;&#xFF0C;&#x5EFA;&#x6BCE;&#x643A;&#x5E36;&#x5916;&#x5957;</li>
+</ul>
+</div>
+
+</div>
+</body>
+</html>

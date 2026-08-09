@@ -82,6 +82,7 @@
       box-shadow: 0 0 0 2px rgba(103, 58, 183, .25);
     }
     .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .import-summary { margin-top: 10px; padding: 10px 12px; background: #e8f6e9; border: 1px solid #b7e0ba; border-radius: 6px; font-size: 14px; color: #1e7d26; line-height: 1.6; }
     button {
       border: none;
       border-radius: 6px;
@@ -382,7 +383,7 @@
               <thead>
                 <tr>
                   <th id="selectAllTh" style="width:32px;"><input type="checkbox" id="selectAll"></th>
-                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>狀態</th><th></th>
+                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>重量</th><th>到貨日期</th><th>狀態</th><th></th>
                 </tr>
               </thead>
               <tbody id="recordsBody"></tbody>
@@ -399,7 +400,12 @@
               匯入備份
               <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
             </label>
+            <label class="btn-clear" style="display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;padding:12px 24px;font-size:15px;font-weight:500;cursor:pointer;color:var(--primary-dark);">
+              匯入包裹資料 (重量/到貨)
+              <input type="file" id="importXlsx" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none;">
+            </label>
           </div>
+          <div id="importResult"></div>
         </div>
       </section>
 
@@ -417,6 +423,7 @@
   <div id="printArea"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     (function () {
       var SUPABASE_URL = 'https://nutkocotbncqxgvjkfxi.supabase.co';
@@ -467,10 +474,10 @@
       function round2(n) { return Math.round(n * 100) / 100; }
 
       function recRow(r) {
-        return { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived };
+        return { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived, weight: r.weight != null ? r.weight : null, arrived_date: r.arrivedDate != null ? r.arrivedDate : null };
       }
       function recFrom(row) {
-        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived };
+        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived, weight: row.weight != null ? row.weight : null, arrivedDate: row.arrived_date != null ? row.arrived_date : null };
       }
       function batchRow(b) { return { id: b.id, name: b.name, created_at: b.createdAt }; }
       function batchFrom(row) { return { id: row.id, name: row.name, createdAt: row.created_at }; }
@@ -954,6 +961,10 @@
           tdItem.textContent = r.item;
           var tdAmount = document.createElement('td');
           tdAmount.textContent = r.amount;
+          var tdWeight = document.createElement('td');
+          tdWeight.textContent = r.weight != null ? r.weight : '';
+          var tdArrived = document.createElement('td');
+          tdArrived.textContent = r.arrivedDate != null ? fmtTime(r.arrivedDate) : '';
           var tdStatus = document.createElement('td');
           var badge = document.createElement('span');
           if (r.batchId == null) {
@@ -987,6 +998,8 @@
           tr.appendChild(tdOrder);
           tr.appendChild(tdItem);
           tr.appendChild(tdAmount);
+          tr.appendChild(tdWeight);
+          tr.appendChild(tdArrived);
           tr.appendChild(tdStatus);
           tr.appendChild(tdAct);
           tbody.appendChild(tr);
@@ -1254,6 +1267,78 @@
         reader.readAsText(file);
       }
 
+      function importParcelXlsx(file) {
+        if (!window.XLSX) {
+          showToast('缺少 Excel 解析元件，無法讀取檔案');
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (!rows.length) { showToast('檔案為空白'); return; }
+            var header = rows[0].map(String);
+            function col(name) {
+              for (var i = 0; i < header.length; i++) if (String(header[i]).indexOf(name) >= 0) return i;
+              return -1;
+            }
+            var cTrack = col('首程物流单号'); if (cTrack < 0) cTrack = col('单号');
+            var cWeight = col('重量');
+            var cArrive = col('收货时间');
+            if (cTrack < 0) { showToast('找不到「首程物流单号」欄位'); return; }
+
+            var matched = 0;
+            var unmatched = [];
+            var noWeightArrive = [];
+            for (var ri = 1; ri < rows.length; ri++) {
+              var row = rows[ri];
+              if (!row || !row[cTrack]) continue;
+              var trackNo = String(row[cTrack]).trim();
+              var weight = cWeight >= 0 && row[cWeight] != null ? String(row[cWeight]).trim() : '';
+              var arriveRaw = cArrive >= 0 && row[cArrive] != null ? String(row[cArrive]).trim() : '';
+              var arriveMs = null;
+              if (arriveRaw) {
+                var t = arriveRaw.replace(/[\/]/g, '-');
+                var d = new Date(t.replace(' ', 'T'));
+                if (!isNaN(d.getTime())) arriveMs = d.getTime();
+              }
+
+              var rec = null;
+              for (var i = 0; i < records.length; i++) {
+                if (String(records[i].orderNo) === trackNo) { rec = records[i]; break; }
+              }
+              if (!rec) { unmatched.push(trackNo); continue; }
+
+              var update = {};
+              if (weight !== '') { update.weight = weight; rec.weight = weight; }
+              if (arriveMs != null) { update.arrived_date = arriveMs; rec.arrivedDate = arriveMs; }
+              if (!Object.keys(update).length) { noWeightArrive.push(trackNo); continue; }
+              persist(sb.from('records').update(update).eq('id', rec.id), '同步失敗：更新包裹');
+              matched++;
+            }
+
+            cacheSave();
+            renderAll();
+            var msg = '匯入完成：比對成功 ' + matched + ' 筆，未比對到 ' + unmatched.length + ' 筆';
+            if (unmatched.length) msg += '\n未比對：' + unmatched.slice(0, 20).join(', ') + (unmatched.length > 20 ? ' …' : '');
+            var res = $('importResult');
+            if (res) {
+              var h = '<div class="import-summary">' + msg.replace(/\n/g, '<br>') + '</div>';
+              if (unmatched.length) {
+                h += '<div style="margin-top:8px;font-size:13px;color:#c0392b;">未比對到的單號：<br>' + unmatched.map(function (s) { return esc(s); }).join('<br>') + '</div>';
+              }
+              res.innerHTML = h;
+            }
+            showToast('匯入完成：' + matched + ' 筆成功');
+          } catch (err) {
+            showToast('匯入失敗：' + err.message);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
       function renderAll() {
         applyView();
         renderNameList();
@@ -1329,6 +1414,12 @@
         $('btnBackup').addEventListener('click', backup);
         $('importFile').addEventListener('change', function (e) {
           if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
+          e.target.value = '';
+        });
+
+        var importXlsxEl = $('importXlsx');
+        if (importXlsxEl) importXlsxEl.addEventListener('change', function (e) {
+          if (e.target.files && e.target.files[0]) importParcelXlsx(e.target.files[0]);
           e.target.value = '';
         });
 

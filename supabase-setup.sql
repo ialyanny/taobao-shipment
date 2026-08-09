@@ -9,8 +9,14 @@ create table if not exists public.records (
   item text,
   amount text,
   batch_id text,
-  arrived boolean default false
+  arrived boolean default false,
+  weight numeric,
+  arrived_date bigint
 );
+
+-- 既有資料表若缺少新欄位，用以下指令補上（可重複執行）
+alter table public.records add column if not exists weight numeric;
+alter table public.records add column if not exists arrived_date bigint;
 
 create table if not exists public.batches (
   id text primary key,
