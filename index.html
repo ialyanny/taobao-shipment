@@ -217,6 +217,23 @@
     .batch-add select { flex: 1 1 auto; width: auto; padding: 8px 10px; font-size: 13px; }
     .mono { font-family: Consolas, "Courier New", monospace; }
 
+    .pending-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+      margin-bottom: 10px; background: #fffdf5;
+    }
+    .pending-info { flex: 1 1 auto; min-width: 220px; }
+    .p-order { font-family: Consolas, "Courier New", monospace; font-weight: 700; font-size: 15px; }
+    .p-meta { font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
+    .claim-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .claim-form input {
+      padding: 8px 10px; font-size: 14px; border: 1px solid var(--border);
+      border-radius: 6px; outline: none; width: 150px;
+    }
+    .claim-form input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(103, 58, 183, .25); }
+    .claim-note { font-size: 13px; color: #c0392b; margin-left: 6px; }
+    .badge-pending-claim { background: #fef7e0; color: var(--orange); }
+
     .sync-status {
       display: inline-block;
       font-size: 12px;
@@ -354,6 +371,11 @@
             </div>
           </form>
         </div>
+        <div class="card" id="pendingCard" style="display:none">
+          <h2 style="font-size:20px;margin-bottom:8px;">待認領包裹 <span id="pendingCount" class="badge badge-pending-claim">0</span></h2>
+          <p class="hint">以下包裹已到集運倉但尚未登錄品項與金額。請選擇你的包裹單號，輸入品項與金額後即可認領，認領後會加入你的包裹清單。</p>
+          <div id="pendingList"></div>
+        </div>
       </section>
 
       <section id="tab-records" class="tab-panel" style="display:none">
@@ -404,6 +426,7 @@
               匯入包裹資料 (重量/到貨)
               <input type="file" id="importXlsx" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none;">
             </label>
+            <button type="button" class="btn-green" id="btnPushPending">推播未登錄包裹</button>
           </div>
           <div id="importResult"></div>
         </div>
@@ -443,6 +466,12 @@
       };
       var ADMIN_NAMES = ['武昌', '曉君'];
       var NAMES = ['俊賢', '榮吉', '小惠', 'Hebe', '弟', '妹', '育源', '武昌', '曉君'];
+      var PENDING_PACKAGES = [
+        { orderNo: 'YT7634938001060', weight: 0.24, arrivedDate: 1785175739000, remark: '昌' },
+        { orderNo: '773433868685447', weight: 0.26, arrivedDate: 1785367482000, remark: '昌' },
+        { orderNo: '435285812093331', weight: 0.60, arrivedDate: 1785284777000, remark: '昌' },
+        { orderNo: '79023982071885', weight: 0.06, arrivedDate: 1786149126000, remark: '俊賢' }
+      ];
       var SEED_RECORDS = [{"time":1784319875000,"name":"弟","orderNo":"435272535982156","item":"褲子","amount":"0"},{"time":1783189726000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠背","amount":"47.62"},{"time":1783550938000,"name":"俊賢","orderNo":"79016123773267","item":"座椅靠","amount":"47.62"},{"time":1784296380000,"name":"榮吉","orderNo":"9822789936997","item":"衣物除味噴霧","amount":"0"},{"time":1782723847000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783292462000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"1.89元"},{"time":1783337040000,"name":"榮吉","orderNo":"773430298305689","item":"眼線筆","amount":"0"},{"time":1783873464000,"name":"榮吉","orderNo":"435266561020411","item":"67W快充線","amount":"0"},{"time":1783952041000,"name":"榮吉","orderNo":"JT3170121905771","item":"測電筆","amount":"0"},{"time":1783897780000,"name":"俊賢","orderNo":"YT7631445333130","item":"收納盒","amount":"2.01元"},{"time":1784207750000,"name":"榮吉","orderNo":"9822779604858","item":"定妝噴霧","amount":"0"},{"time":1782228397000,"name":"俊賢","orderNo":"773426545571792","item":"陶瓷蒸籠","amount":"24.3元"},{"time":1782235638000,"name":"俊賢","orderNo":"79014009539615","item":"冰霸杯","amount":"18.82"},{"time":1782286450000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1782286492000,"name":"俊賢","orderNo":"YT8879717510828","item":"轉接頭","amount":"13.5"},{"time":1782338541000,"name":"弟","orderNo":"773427544569349","item":"保護貼","amount":"14.35"},{"time":1784484941000,"name":"榮吉","orderNo":"435276290900047","item":"吃瓜神器","amount":"0"},{"time":1782513459000,"name":"俊賢","orderNo":"79014568353156","item":"強力磁鐵","amount":"5元"},{"time":1783189778000,"name":"俊賢","orderNo":"73600478536863","item":"手機殼","amount":"100.28"},{"time":1783189941000,"name":"俊賢","orderNo":"79116507025694","item":"藍芽接收器","amount":"42.9"},{"time":1783189819000,"name":"俊賢","orderNo":"YT7629416487634","item":"轉接頭","amount":"4.59"},{"time":1783189886000,"name":"俊賢","orderNo":"YT8880636814779","item":"雨傘","amount":"11.06"},{"time":1784319898000,"name":"弟","orderNo":"YT7633193521247","item":"褲子1","amount":"0"},{"time":1784319956000,"name":"弟","orderNo":"773431765309218","item":"玻璃貼","amount":"0"},{"time":1784320053000,"name":"弟","orderNo":"773431758134690","item":"玻璃貼1","amount":"0"},{"time":1784320081000,"name":"弟","orderNo":"YT7632896479356","item":"充電器","amount":"0"},{"time":1784320106000,"name":"弟","orderNo":"79018899130936","item":"充電器1","amount":"0"},{"time":1784320129000,"name":"弟","orderNo":"YT7632898574570","item":"充電線","amount":"0"},{"time":1784737218000,"name":"Hebe","orderNo":"YT0057803917151","item":"衣服","amount":"100"},{"time":1785111442000,"name":"榮吉","orderNo":"JT3171664587193","item":"電競指套","amount":"0"},{"time":1785278413000,"name":"Hebe","orderNo":"770335249124628","item":"衣服","amount":"100"},{"time":1785332469000,"name":"俊賢","orderNo":"9822835052492","item":"香薰","amount":"0.99"},{"time":1785332515000,"name":"俊賢","orderNo":"79020255221536","item":"藍芽接收器","amount":"11.04"},{"time":1785332590000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785332657000,"name":"俊賢","orderNo":"JT3170599843390","item":"耳機轉接線","amount":"7.69"},{"time":1783884033000,"name":"榮吉","orderNo":"JT3170097566028","item":"去污膏","amount":"0"},{"time":1785481461000,"name":"弟","orderNo":"SF5112962902449","item":"保護套","amount":"0"},{"time":1785481487000,"name":"弟","orderNo":"79021580267193","item":"充電線","amount":"0"},{"time":1785665628000,"name":"榮吉","orderNo":"79022871145996","item":"拼豆補充包","amount":"0"},{"time":1785667688000,"name":"榮吉","orderNo":"773434710903862","item":"藍芽耳機","amount":"0"},{"time":1785695129000,"name":"榮吉","orderNo":"9822899066964","item":"耳塞","amount":"0"},{"time":1785695178000,"name":"榮吉","orderNo":"435295643351172","item":"耳洞清潔器","amount":"0"},{"time":1784635685000,"name":"榮吉","orderNo":"JT3171090028762","item":"外出背包","amount":"0"},{"time":1784660978000,"name":"榮吉","orderNo":"9822818624350","item":"香氛","amount":"0"},{"time":1785749782000,"name":"俊賢","orderNo":"79127598165487","item":"頭盔耳機","amount":"57.34"},{"time":1785749845000,"name":"俊賢","orderNo":"JT5506335502948","item":"麥克風","amount":"5.4"},{"time":1785749959000,"name":"俊賢","orderNo":"79020305825655","item":"藍芽音頻接收器","amount":"28.84"},{"time":1785750016000,"name":"俊賢","orderNo":"79020255221536","item":"5.3音頻接收器","amount":"11.04"},{"time":1785760133000,"name":"Hebe","orderNo":"79022917754324","item":"衣服","amount":"100"},{"time":1785777651000,"name":"榮吉","orderNo":"773434828480463","item":"美甲磁鐵棒","amount":"0"},{"time":1785777702000,"name":"榮吉","orderNo":"9822904532251","item":"拼豆筆","amount":"0"},{"time":1785795133000,"name":"俊賢","orderNo":"JT5511428018522","item":"雨衣","amount":"11.97"},{"time":1785795199000,"name":"俊賢","orderNo":"JT5511585053529","item":"外套","amount":"13.8"},{"time":1785795261000,"name":"俊賢","orderNo":"JT5511614179773","item":"藍芽接收器","amount":"24.04"},{"time":1785835977000,"name":"榮吉","orderNo":"YT7636433267767","item":"拼豆針","amount":"0"},{"time":1785836009000,"name":"榮吉","orderNo":"773434948184628","item":"刮鬍刀","amount":"0"},{"time":1785837467000,"name":"榮吉","orderNo":"9822909716382","item":"圖釘1","amount":"0"},{"time":1785837541000,"name":"榮吉","orderNo":"773434976323581","item":"圖釘2","amount":"0"}];
 
       var sb = null;
@@ -617,7 +646,7 @@
       function isAdmin() { return !!(currentUser && currentUser.admin); }
       function myName() { return currentUser ? currentUser.name : ''; }
       function visibleRecords() {
-        if (isAdmin()) return records;
+        if (isAdmin()) return records.filter(function (r) { return r.name; });
         var n = myName();
         return records.filter(function (r) { return r.name === n; });
       }
@@ -1339,12 +1368,111 @@
         reader.readAsArrayBuffer(file);
       }
 
+      function pendingRecords() {
+        return records.filter(function (r) { return !r.name; });
+      }
+      function pendingRemark(orderNo) {
+        for (var i = 0; i < PENDING_PACKAGES.length; i++) {
+          if (PENDING_PACKAGES[i].orderNo === orderNo) return PENDING_PACKAGES[i].remark || '';
+        }
+        return '';
+      }
+      function renderPending() {
+        var card = $('pendingCard');
+        var pend = pendingRecords();
+        $('pendingCount').textContent = pend.length;
+        if (!pend.length || !currentUser) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+        var list = $('pendingList');
+        list.innerHTML = '';
+        pend.forEach(function (r) {
+          var row = document.createElement('div');
+          row.className = 'pending-row';
+          var info = document.createElement('div');
+          info.className = 'pending-info';
+          var meta = '重量 ' + (r.weight != null ? esc(r.weight) : '-') + ' kg　｜　到貨 ' + (r.arrivedDate != null ? fmtTime(r.arrivedDate) : '-');
+          var remark = pendingRemark(r.orderNo);
+          if (remark) meta += '　｜　備註：' + esc(remark);
+          info.innerHTML = '<div class="p-order">' + esc(r.orderNo) + '</div><div class="p-meta">' + meta + '</div>';
+          row.appendChild(info);
+          if (myName()) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-sm btn-green';
+            btn.textContent = '選擇並輸入品項金額';
+            btn.addEventListener('click', function () {
+              openClaimForm(row, r);
+            });
+            row.appendChild(btn);
+          }
+          list.appendChild(row);
+        });
+      }
+      function openClaimForm(row, r) {
+        var existing = row.querySelector('.claim-form');
+        if (existing) { existing.remove(); return; }
+        var form = document.createElement('div');
+        form.className = 'claim-form';
+        form.innerHTML = ''
+          + '<div style="font-size:13px;color:var(--muted);">認領人：' + esc(myName()) + '</div>'
+          + '<input type="text" class="claim-item" placeholder="品項" autocomplete="off">'
+          + '<input type="text" class="claim-amount" placeholder="金額 (人民幣)" autocomplete="off">'
+          + '<button type="button" class="btn-sm btn-green claim-ok">確認認領</button>'
+          + '<button type="button" class="btn-sm claim-cancel">取消</button>'
+          + '<span class="claim-note">認領後會加入你的包裹清單</span>';
+        row.appendChild(form);
+        var itemEl = form.querySelector('.claim-item');
+        var amountEl = form.querySelector('.claim-amount');
+        itemEl.focus();
+        form.querySelector('.claim-ok').addEventListener('click', function () {
+          var item = itemEl.value.trim();
+          var amount = amountEl.value.trim();
+          if (!item || !amount) { showToast('請填寫品項與金額'); return; }
+          r.name = myName();
+          r.item = item;
+          r.amount = amount;
+          persist(sb.from('records').update({ name: r.name, item: item, amount: amount }).eq('id', r.id), '同步失敗：認領包裹');
+          cacheSave();
+          renderAll();
+          showToast('已認領：' + r.orderNo);
+        });
+        form.querySelector('.claim-cancel').addEventListener('click', function () { form.remove(); });
+      }
+      function pushPendingPackages() {
+        var existing = {};
+        records.forEach(function (r) { existing[r.orderNo] = true; });
+        var added = 0;
+        PENDING_PACKAGES.forEach(function (p) {
+          if (existing[p.orderNo]) return;
+          var rec = {
+            id: 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            time: p.arrivedDate || Date.now(),
+            name: '',
+            orderNo: p.orderNo,
+            item: '',
+            amount: '',
+            batchId: null,
+            arrived: false,
+            weight: p.weight != null ? p.weight : null,
+            arrivedDate: p.arrivedDate != null ? p.arrivedDate : null
+          };
+          records.push(rec);
+          persist(sb.from('records').insert([recRow(rec)]), '同步失敗：推播包裹');
+          added++;
+        });
+        cacheSave();
+        renderAll();
+        if (added) showToast('已推播 ' + added + ' 筆未登錄包裹');
+        else showToast('沒有新的未登錄包裹需要推播');
+      }
+
       function renderAll() {
         applyView();
         renderNameList();
         renderStats();
         renderRecords();
         renderBatches();
+        renderPending();
       }
 
       function init() {
@@ -1364,7 +1492,7 @@
             err.textContent = '請完整填寫單號、品項、金額與姓名';
             return;
           }
-          var dup = visibleRecords().find(function (r) { return r.orderNo === orderNo; });
+          var dup = records.find(function (r) { return r.orderNo === orderNo; });
           if (dup) {
             err.textContent = '單號 ' + orderNo + ' 已存在（' + dup.name + '，' + fmtTime(dup.time) + '），請確認是否重複';
             return;
@@ -1422,6 +1550,9 @@
           if (e.target.files && e.target.files[0]) importParcelXlsx(e.target.files[0]);
           e.target.value = '';
         });
+
+        var btnPush = $('btnPushPending');
+        if (btnPush) btnPush.addEventListener('click', pushPendingPackages);
 
         var btnLogin = $('btnLogin');
         if (btnLogin) btnLogin.addEventListener('click', doLogin);
