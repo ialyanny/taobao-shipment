@@ -225,13 +225,6 @@
     .pending-info { flex: 1 1 auto; min-width: 220px; }
     .p-order { font-family: Consolas, "Courier New", monospace; font-weight: 700; font-size: 15px; }
     .p-meta { font-size: 13px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
-    .claim-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .claim-form input {
-      padding: 8px 10px; font-size: 14px; border: 1px solid var(--border);
-      border-radius: 6px; outline: none; width: 150px;
-    }
-    .claim-form input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(103, 58, 183, .25); }
-    .claim-note { font-size: 13px; color: #c0392b; margin-left: 6px; }
     .badge-pending-claim { background: #fef7e0; color: var(--orange); }
 
     .sync-status {
@@ -322,6 +315,27 @@
         <button type="button" id="btnLogin" class="btn-primary" style="width:100%;margin-top:8px;">登入</button>
         <button type="button" id="btnCancelUser" style="width:100%;margin-top:8px;">取消</button>
       </div>
+    </div>
+  </div>
+
+  <div class="login-mask" id="claimOverlay" style="display:none">
+    <div class="login-card">
+      <h2>認領包裹</h2>
+      <p>選擇下列包裹，輸入品項與金額即可認領到你的名下。</p>
+      <div id="claimOrderSelect"></div>
+      <div class="field" style="margin-top:12px;">
+        <label>品項</label>
+        <input type="text" id="claimItem" placeholder="例如 手機殼" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>金額（人民幣）</label>
+        <input type="text" id="claimAmount" placeholder="例如 100" autocomplete="off">
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn-submit" id="btnClaimOk">確認認領</button>
+        <button type="button" class="btn-clear" id="btnClaimCancel">取消</button>
+      </div>
+      <div class="error" id="claimError"></div>
     </div>
   </div>
 
@@ -1320,6 +1334,7 @@
 
             var matched = 0;
             var unmatched = [];
+            var unmatchedPkgs = [];
             var noWeightArrive = [];
             for (var ri = 1; ri < rows.length; ri++) {
               var row = rows[ri];
@@ -1338,7 +1353,11 @@
               for (var i = 0; i < records.length; i++) {
                 if (String(records[i].orderNo) === trackNo) { rec = records[i]; break; }
               }
-              if (!rec) { unmatched.push(trackNo); continue; }
+              if (!rec) {
+                unmatched.push(trackNo);
+                unmatchedPkgs.push({ orderNo: trackNo, weight: weight !== '' ? weight : null, arrivedDate: arriveMs });
+                continue;
+              }
 
               var update = {};
               if (weight !== '') { update.weight = weight; rec.weight = weight; }
@@ -1357,8 +1376,15 @@
               var h = '<div class="import-summary">' + msg.replace(/\n/g, '<br>') + '</div>';
               if (unmatched.length) {
                 h += '<div style="margin-top:8px;font-size:13px;color:#c0392b;">未比對到的單號：<br>' + unmatched.map(function (s) { return esc(s); }).join('<br>') + '</div>';
+                h += '<button type="button" class="btn-green" id="btnPushUnmatched" style="margin-top:10px;">推播這 ' + unmatchedPkgs.length + ' 筆未登錄包裹</button>';
               }
               res.innerHTML = h;
+              var pushBtn = $('btnPushUnmatched');
+              if (pushBtn) pushBtn.addEventListener('click', function () {
+                var added = pushPendingPackagesList(unmatchedPkgs);
+                if (added) showToast('已推播 ' + added + ' 筆未登錄包裹，一般使用者可於「待認領包裹」認領');
+                else showToast('沒有新的未登錄包裹需要推播');
+              });
             }
             showToast('匯入完成：' + matched + ' 筆成功');
           } catch (err) {
@@ -1401,48 +1427,51 @@
             btn.className = 'btn-sm btn-green';
             btn.textContent = '選擇並輸入品項金額';
             btn.addEventListener('click', function () {
-              openClaimForm(row, r);
+              openClaimModal(r);
             });
             row.appendChild(btn);
           }
           list.appendChild(row);
         });
       }
-      function openClaimForm(row, r) {
-        var existing = row.querySelector('.claim-form');
-        if (existing) { existing.remove(); return; }
-        var form = document.createElement('div');
-        form.className = 'claim-form';
-        form.innerHTML = ''
-          + '<div style="font-size:13px;color:var(--muted);">認領人：' + esc(myName()) + '</div>'
-          + '<input type="text" class="claim-item" placeholder="品項" autocomplete="off">'
-          + '<input type="text" class="claim-amount" placeholder="金額 (人民幣)" autocomplete="off">'
-          + '<button type="button" class="btn-sm btn-green claim-ok">確認認領</button>'
-          + '<button type="button" class="btn-sm claim-cancel">取消</button>'
-          + '<span class="claim-note">認領後會加入你的包裹清單</span>';
-        row.appendChild(form);
-        var itemEl = form.querySelector('.claim-item');
-        var amountEl = form.querySelector('.claim-amount');
-        itemEl.focus();
-        form.querySelector('.claim-ok').addEventListener('click', function () {
-          var item = itemEl.value.trim();
-          var amount = amountEl.value.trim();
-          if (!item || !amount) { showToast('請填寫品項與金額'); return; }
-          r.name = myName();
-          r.item = item;
-          r.amount = amount;
-          persist(sb.from('records').update({ name: r.name, item: item, amount: amount }).eq('id', r.id), '同步失敗：認領包裹');
-          cacheSave();
-          renderAll();
-          showToast('已認領：' + r.orderNo);
-        });
-        form.querySelector('.claim-cancel').addEventListener('click', function () { form.remove(); });
+      var claimTarget = null;
+      function openClaimModal(r) {
+        claimTarget = r;
+        $('claimItem').value = '';
+        $('claimAmount').value = '';
+        $('claimError').textContent = '';
+        var opts = pendingRecords().map(function (p) {
+          return '<option value="' + esc(p.id) + '">' + esc(p.orderNo) + '</option>';
+        }).join('');
+        $('claimOrderSelect').innerHTML = '<label>選擇包裹</label><select id="claimOrder">' + opts + '</select>';
+        $('claimOrder').value = r.id;
+        $('claimOverlay').style.display = 'flex';
+        $('claimItem').focus();
       }
-      function pushPendingPackages() {
+      function doClaim() {
+        var sel = $('claimOrder');
+        var id = sel ? sel.value : null;
+        var r = id ? findRec(id) : claimTarget;
+        var err = $('claimError');
+        if (!r) { err.textContent = '找不到這筆包裹'; return; }
+        var item = $('claimItem').value.trim();
+        var amount = $('claimAmount').value.trim();
+        if (!item || !amount) { err.textContent = '請填寫品項與金額'; return; }
+        r.name = myName();
+        r.item = item;
+        r.amount = amount;
+        persist(sb.from('records').update({ name: r.name, item: item, amount: amount }).eq('id', r.id), '同步失敗：認領包裹');
+        $('claimOverlay').style.display = 'none';
+        cacheSave();
+        renderAll();
+        showToast('已認領：' + r.orderNo);
+      }
+      function pushPendingPackagesList(pkgs) {
+        if (!pkgs || !pkgs.length) return 0;
         var existing = {};
         records.forEach(function (r) { existing[r.orderNo] = true; });
         var added = 0;
-        PENDING_PACKAGES.forEach(function (p) {
+        pkgs.forEach(function (p) {
           if (existing[p.orderNo]) return;
           var rec = {
             id: 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -1462,6 +1491,10 @@
         });
         cacheSave();
         renderAll();
+        return added;
+      }
+      function pushPendingPackages() {
+        var added = pushPendingPackagesList(PENDING_PACKAGES);
         if (added) showToast('已推播 ' + added + ' 筆未登錄包裹');
         else showToast('沒有新的未登錄包裹需要推播');
       }
@@ -1562,6 +1595,22 @@
           var pwSection = $('pwSection');
           if (pwSection) pwSection.style.display = 'none';
           selectedUserName = null;
+        });
+
+        var btnClaimOk = $('btnClaimOk');
+        if (btnClaimOk) btnClaimOk.addEventListener('click', doClaim);
+
+        var btnClaimCancel = $('btnClaimCancel');
+        if (btnClaimCancel) btnClaimCancel.addEventListener('click', function () {
+          $('claimOverlay').style.display = 'none';
+          claimTarget = null;
+        });
+
+        $('claimItem').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); $('claimAmount').focus(); }
+        });
+        $('claimAmount').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); doClaim(); }
         });
 
         currentUser = loadUser();
