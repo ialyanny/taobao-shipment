@@ -813,12 +813,15 @@
       function renderStats() {
         var box = $('statsBox');
         var vis = visibleRecords();
-        var map = {}, names = [], allCount = 0, allAmount = 0, allPendingCount = 0, allPendingAmount = 0;
+        var map = {}, names = [], allCount = 0, allAmount = 0, allPendingCount = 0, allPendingAmount = 0, allWeight = 0;
         vis.forEach(function (r) {
           var num = toNum(r.amount);
+          var wt = toNum(r.weight);
           allCount++;
           allAmount += num;
-          if (!map[r.name]) { map[r.name] = { pc: 0, pa: 0, sc: 0, sa: 0 }; names.push(r.name); }
+          allWeight += wt;
+          if (!map[r.name]) { map[r.name] = { pc: 0, pa: 0, sc: 0, sa: 0, w: 0 }; names.push(r.name); }
+          map[r.name].w += wt;
           if (r.batchId == null) {
             map[r.name].pc++; map[r.name].pa += num;
             allPendingCount++; allPendingAmount += num;
@@ -828,7 +831,7 @@
         });
         names.sort();
         var label = isAdmin() ? '全部' : '我的';
-        var html = '<div class="summary-line">' + label + ' <b>' + allCount + '</b> 筆 / 總金額 <b>¥' + round2(allAmount) + '</b>　｜　待集運 <b>' + allPendingCount + '</b> 件 / <b>¥' + round2(allPendingAmount) + '</b>（點卡片可篩選）</div>';
+        var html = '<div class="summary-line">' + label + ' <b>' + allCount + '</b> 筆 / 總金額 <b>¥' + round2(allAmount) + '</b>　｜　待集運 <b>' + allPendingCount + '</b> 件 / <b>¥' + round2(allPendingAmount) + '</b>　｜　總重量 <b>' + round2(allWeight) + '</b> kg（點卡片可篩選）</div>';
         html += '<div class="stats-grid">';
         names.forEach(function (n) {
           var s = map[n];
@@ -836,6 +839,7 @@
             + '<div class="person-name">' + esc(n) + '</div>'
             + '<div class="person-nums">待集運 <b>' + s.pc + '</b> 件 / ¥' + round2(s.pa) + '</div>'
             + '<div class="person-nums">已集運 <b>' + s.sc + '</b> 件 / ¥' + round2(s.sa) + '</div>'
+            + '<div class="person-nums">包裹總重量 <b>' + round2(s.w) + '</b> kg</div>'
             + '</div>';
         });
         html += '</div>';
