@@ -1731,6 +1731,15 @@
         var btnLogin = $('btnLogin');
         if (btnLogin) btnLogin.addEventListener('click', doLogin);
 
+        var passAuto = $('userPass');
+        if (passAuto) passAuto.addEventListener('input', function () {
+          if (!selectedUserName) return;
+          var requiredPass = USER_PASSWORDS[selectedUserName] || '';
+          if (requiredPass && passAuto.value === requiredPass) {
+            doLogin();
+          }
+        });
+
         var btnCancel = $('btnCancelUser');
         if (btnCancel) btnCancel.addEventListener('click', function () {
           var pwSection = $('pwSection');
