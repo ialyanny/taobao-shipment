@@ -339,6 +339,43 @@
     </div>
   </div>
 
+  <div class="login-mask" id="editOverlay" style="display:none">
+    <div class="login-card">
+      <h2>修改包裹</h2>
+      <p>修改後立即同步到共享資料庫，所有使用者看到相同內容。</p>
+      <div class="field">
+        <label>姓名</label>
+        <input type="text" id="editName" placeholder="例如 俊賢" autocomplete="off" list="editNameList">
+        <datalist id="editNameList"></datalist>
+      </div>
+      <div class="field">
+        <label>單號</label>
+        <input type="text" id="editOrderNo" placeholder="例如 1234567890123" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>品項</label>
+        <input type="text" id="editItem" placeholder="例如 手機殼" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>金額（人民幣）</label>
+        <input type="text" id="editAmount" placeholder="例如 100" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>重量（公斤，留空清除）</label>
+        <input type="text" id="editWeight" placeholder="例如 0.24" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>到貨日期（留空清除）</label>
+        <input type="text" id="editArrivedDate" placeholder="例如 2024-01-01 或 2024/1/1 10:30" autocomplete="off">
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn-submit" id="btnEditSave">儲存修改</button>
+        <button type="button" class="btn-clear" id="btnEditCancel">取消</button>
+      </div>
+      <div class="error" id="editError"></div>
+    </div>
+  </div>
+
   <div id="app">
     <div class="container">
       <header>
@@ -515,6 +552,32 @@
         return isNaN(n) ? 0 : n;
       }
       function round2(n) { return Math.round(n * 100) / 100; }
+      function parseArrival(v) {
+        if (v == null || v === '') return null;
+        if (v instanceof Date) return isNaN(v.getTime()) ? null : v.getTime();
+        var serialToMs = function (n) {
+          var d = new Date(Math.round((n - 25569) * 86400000));
+          if (isNaN(d.getTime())) return null;
+          return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(),
+            d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()).getTime();
+        };
+        if (typeof v === 'number') return serialToMs(v);
+        var s = String(v).trim();
+        if (!s) return null;
+        if (/^[\d.]+$/.test(s)) return serialToMs(parseFloat(s));
+        s = s.replace(/[\/.]/g, '-').replace(/\s+/g, ' ').replace(/\s*(\+\d{2}:\d{2}|\+\d{4}|Z|UTC)$/i, '');
+        var d;
+        var m;
+        if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+          d = new Date(+m[1], +m[2] - 1, +m[3], 0, 0, 0);
+        } else if (/\d{4}-\d{1,2}-\d{1,2}/.test(s)) {
+          d = new Date(s.replace(' ', 'T'));
+          if (isNaN(d.getTime())) d = new Date(s);
+        } else {
+          d = new Date(s);
+        }
+        return isNaN(d.getTime()) ? null : d.getTime();
+      }
 
       function recRow(r) {
         return { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived, weight: r.weight != null ? r.weight : null, arrived_date: r.arrivedDate != null ? r.arrivedDate : null };
@@ -745,6 +808,8 @@
         currentUser = null;
         formName = '';
         try { localStorage.removeItem(USER_KEY); } catch (e) {}
+        var ov = $('editOverlay');
+        if (ov) ov.style.display = 'none';
         renderUserBar();
         renderLogin();
       }
@@ -1025,6 +1090,16 @@
 
           var tdAct = document.createElement('td');
           tdAct.className = 'row-actions';
+          if (isAdmin()) {
+            var editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.textContent = '修改';
+            editBtn.style.color = 'var(--blue)';
+            editBtn.addEventListener('click', function () {
+              openEditModal(r);
+            });
+            tdAct.appendChild(editBtn);
+          }
           var delBtn = document.createElement('button');
           delBtn.type = 'button';
           delBtn.textContent = '刪除';
@@ -1345,13 +1420,7 @@
               if (!row || !row[cTrack]) continue;
               var trackNo = String(row[cTrack]).trim();
               var weight = cWeight >= 0 && row[cWeight] != null ? String(row[cWeight]).trim() : '';
-              var arriveRaw = cArrive >= 0 && row[cArrive] != null ? String(row[cArrive]).trim() : '';
-              var arriveMs = null;
-              if (arriveRaw) {
-                var t = arriveRaw.replace(/[\/]/g, '-');
-                var d = new Date(t.replace(' ', 'T'));
-                if (!isNaN(d.getTime())) arriveMs = d.getTime();
-              }
+              var arriveMs = cArrive >= 0 ? parseArrival(row[cArrive]) : null;
 
               var rec = null;
               for (var i = 0; i < records.length; i++) {
@@ -1439,6 +1508,74 @@
         });
       }
       var claimTarget = null;
+      function fmtArrivalInput(ts) {
+        if (ts == null) return '';
+        var d = new Date(ts);
+        function p(x) { return x < 10 ? '0' + x : '' + x; }
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+      }
+      function editTarget() { return currentUser && currentUser.editId ? findRec(currentUser.editId) : null; }
+      function openEditModal(r) {
+        if (!r) return;
+        currentUser.editId = r.id;
+        $('editName').value = r.name || '';
+        $('editOrderNo').value = r.orderNo || '';
+        $('editItem').value = r.item || '';
+        $('editAmount').value = r.amount || '';
+        $('editWeight').value = r.weight != null ? r.weight : '';
+        $('editArrivedDate').value = fmtArrivalInput(r.arrivedDate);
+        $('editError').textContent = '';
+        var dl = $('editNameList');
+        dl.innerHTML = '';
+        NAMES.forEach(function (n) {
+          var o = document.createElement('option');
+          o.value = n;
+          dl.appendChild(o);
+        });
+        $('editOverlay').style.display = 'flex';
+        $('editName').focus();
+      }
+      function closeEditModal() {
+        $('editOverlay').style.display = 'none';
+        if (currentUser) delete currentUser.editId;
+      }
+      function saveEdit() {
+        var r = editTarget();
+        var err = $('editError');
+        if (!r) { err.textContent = '找不到這筆包裹'; return; }
+        var name = $('editName').value.trim();
+        var orderNo = $('editOrderNo').value.trim();
+        var item = $('editItem').value.trim();
+        var amount = $('editAmount').value.trim();
+        var weightRaw = $('editWeight').value.trim();
+        var arriveRaw = $('editArrivedDate').value.trim();
+        if (!name || !orderNo || !item || !amount) {
+          err.textContent = '姓名、單號、品項、金額為必填';
+          return;
+        }
+        var weight = null;
+        if (weightRaw !== '') {
+          if (!/^\d+(\.\d+)?$/.test(weightRaw)) { err.textContent = '重量格式不正確（請輸入數字，例如 0.24）'; return; }
+          weight = parseFloat(weightRaw);
+        }
+        var arriveMs = arriveRaw !== '' ? parseArrival(arriveRaw) : null;
+        if (arriveRaw !== '' && arriveMs == null) { err.textContent = '到貨日期格式不正確'; return; }
+
+        var dup = records.find(function (x) { return x.id !== r.id && x.orderNo === orderNo; });
+        if (dup) { err.textContent = '單號 ' + orderNo + ' 已存在（' + dup.name + '）'; return; }
+
+        var update = {
+          name: name, order_no: orderNo, item: item, amount: amount,
+          weight: weight, arrived_date: arriveMs
+        };
+        r.name = name; r.orderNo = orderNo; r.item = item; r.amount = amount;
+        r.weight = weight; r.arrivedDate = arriveMs;
+        persist(sb.from('records').update(update).eq('id', r.id), '同步失敗：修改包裹');
+        closeEditModal();
+        cacheSave();
+        renderAll();
+        showToast('已修改：' + name + ' — ' + orderNo);
+      }
       function openClaimModal(r) {
         claimTarget = r;
         $('claimItem').value = '';
@@ -1615,6 +1752,28 @@
         });
         $('claimAmount').addEventListener('keydown', function (e) {
           if (e.key === 'Enter') { e.preventDefault(); doClaim(); }
+        });
+
+        var btnEditSave = $('btnEditSave');
+        if (btnEditSave) btnEditSave.addEventListener('click', saveEdit);
+
+        var btnEditCancel = $('btnEditCancel');
+        if (btnEditCancel) btnEditCancel.addEventListener('click', closeEditModal);
+
+        $('editName').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); $('editItem').focus(); }
+        });
+        $('editItem').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); $('editAmount').focus(); }
+        });
+        $('editAmount').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); $('editWeight').focus(); }
+        });
+        $('editWeight').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); $('editArrivedDate').focus(); }
+        });
+        $('editArrivedDate').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
         });
 
         currentUser = loadUser();
