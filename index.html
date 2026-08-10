@@ -923,7 +923,7 @@
         html += '<div class="print-meta">列印時間：' + fmtTime(Date.now()) + '　共 ' + filtered.length + ' 筆　總金額：¥' + round2(sum) + '</div>';
         html += '<div class="print-meta">請逐件核對，勾選已到貨。</div>';
         groupNames.forEach(function (nm) {
-          html += '<div class="print-group">' + esc(nm) + '</div>';
+          html += '<div class="print-group">' + esc(nm) + '（' + groups[nm].length + ' 件）</div>';
           html += '<table class="print-table">'
             + '<tr><th class="col-check">☐</th><th>單號</th><th>品項</th><th class="col-amt">金額</th><th class="col-check">到貨</th></tr>';
           groups[nm].forEach(function (r) {
@@ -1206,7 +1206,7 @@
         html += '<div class="print-meta">包裹數：' + recs.length + ' 件　已到貨：' + arrived + ' 件　總金額：¥' + round2(sum) + '</div>';
         html += '<div class="print-meta">到貨時請對照下表逐件勾選，未勾選即為缺少。</div>';
         groupNames.forEach(function (nm) {
-          html += '<div class="print-group">' + esc(nm) + '</div>';
+          html += '<div class="print-group">' + esc(nm) + '（' + groups[nm].length + ' 件）</div>';
           html += '<table class="print-table">'
             + '<tr><th class="col-check">☐</th><th>單號</th><th>品項</th><th class="col-amt">金額</th><th class="col-check">到貨</th></tr>';
           groups[nm].forEach(function (r) {
