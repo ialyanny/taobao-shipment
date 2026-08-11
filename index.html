@@ -331,6 +331,10 @@
         <label>金額（人民幣）</label>
         <input type="text" id="claimAmount" placeholder="例如 100" autocomplete="off">
       </div>
+      <div class="field">
+        <label>備註（選填）</label>
+        <input type="text" id="claimRemark" placeholder="例如 昌" autocomplete="off">
+      </div>
       <div class="btn-row">
         <button type="button" class="btn-submit" id="btnClaimOk">確認認領</button>
         <button type="button" class="btn-clear" id="btnClaimCancel">取消</button>
@@ -367,10 +371,6 @@
       <div class="field">
         <label>到貨日期（留空清除）</label>
         <input type="text" id="editArrivedDate" placeholder="例如 2024-01-01 或 2024/1/1 10:30" autocomplete="off">
-      </div>
-      <div class="field">
-        <label>備註</label>
-        <input type="text" id="editRemark" placeholder="例如 昌" autocomplete="off">
       </div>
       <div class="btn-row">
         <button type="button" class="btn-submit" id="btnEditSave">儲存修改</button>
@@ -474,7 +474,7 @@
               <thead>
                 <tr>
                   <th id="selectAllTh" style="width:32px;"><input type="checkbox" id="selectAll"></th>
-                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>重量</th><th>到貨日期</th><th>狀態</th><th></th>
+                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>重量</th><th>到貨日期</th><th>備註</th><th>狀態</th><th></th>
                 </tr>
               </thead>
               <tbody id="recordsBody"></tbody>
@@ -1106,6 +1106,8 @@
           tdWeight.textContent = r.weight != null ? r.weight : '';
           var tdArrived = document.createElement('td');
           tdArrived.textContent = r.arrivedDate != null ? fmtTime(r.arrivedDate) : '';
+          var tdRemark = document.createElement('td');
+          tdRemark.textContent = r.remark || '';
           var tdStatus = document.createElement('td');
           var badge = document.createElement('span');
           if (r.batchId == null) {
@@ -1151,6 +1153,7 @@
           tr.appendChild(tdAmount);
           tr.appendChild(tdWeight);
           tr.appendChild(tdArrived);
+          tr.appendChild(tdRemark);
           tr.appendChild(tdStatus);
           tr.appendChild(tdAct);
           tbody.appendChild(tr);
@@ -1555,7 +1558,6 @@
         $('editAmount').value = r.amount || '';
         $('editWeight').value = r.weight != null ? r.weight : '';
         $('editArrivedDate').value = fmtArrivalInput(r.arrivedDate);
-        $('editRemark').value = r.remark || '';
         $('editError').textContent = '';
         var dl = $('editNameList');
         dl.innerHTML = '';
@@ -1581,7 +1583,6 @@
         var amount = $('editAmount').value.trim();
         var weightRaw = $('editWeight').value.trim();
         var arriveRaw = $('editArrivedDate').value.trim();
-        var remark = $('editRemark').value.trim();
         if (!name || !orderNo || !item || !amount) {
           err.textContent = '姓名、單號、品項、金額為必填';
           return;
@@ -1599,10 +1600,10 @@
 
         var update = {
           name: name, order_no: orderNo, item: item, amount: amount,
-          weight: weight, arrived_date: arriveMs, remark: remark
+          weight: weight, arrived_date: arriveMs
         };
         r.name = name; r.orderNo = orderNo; r.item = item; r.amount = amount;
-        r.weight = weight; r.arrivedDate = arriveMs; r.remark = remark;
+        r.weight = weight; r.arrivedDate = arriveMs;
         persist(sb.from('records').update(update).eq('id', r.id), '同步失敗：修改包裹');
         closeEditModal();
         cacheSave();
@@ -1613,12 +1614,17 @@
         claimTarget = r;
         $('claimItem').value = '';
         $('claimAmount').value = '';
+        $('claimRemark').value = r.remark || '';
         $('claimError').textContent = '';
         var opts = pendingRecords().map(function (p) {
           return '<option value="' + esc(p.id) + '">' + esc(p.orderNo) + '</option>';
         }).join('');
         $('claimOrderSelect').innerHTML = '<label>選擇包裹</label><select id="claimOrder">' + opts + '</select>';
         $('claimOrder').value = r.id;
+        $('claimOrder').addEventListener('change', function () {
+          var p = findRec($('claimOrder').value);
+          if (p) $('claimRemark').value = p.remark || '';
+        });
         $('claimOverlay').style.display = 'flex';
         $('claimItem').focus();
       }
@@ -1630,11 +1636,13 @@
         if (!r) { err.textContent = '找不到這筆包裹'; return; }
         var item = $('claimItem').value.trim();
         var amount = $('claimAmount').value.trim();
+        var remark = $('claimRemark').value.trim();
         if (!item || !amount) { err.textContent = '請填寫品項與金額'; return; }
         r.name = myName();
         r.item = item;
         r.amount = amount;
-        persist(sb.from('records').update({ name: r.name, item: item, amount: amount }).eq('id', r.id), '同步失敗：認領包裹');
+        r.remark = remark;
+        persist(sb.from('records').update({ name: r.name, item: item, amount: amount, remark: remark }).eq('id', r.id), '同步失敗：認領包裹');
         $('claimOverlay').style.display = 'none';
         cacheSave();
         renderAll();
@@ -1677,12 +1685,7 @@
       function renderNotice() {
         var box = $('noticeBox');
         if (!box) return;
-        var lines = String(noticeText || '').split('\n').filter(function (l) { return l.trim() !== ''; });
-        var html = '<strong>請注意</strong>';
-        if (!lines.length) lines.push('（尚無提醒內容）');
-        lines.forEach(function (l) {
-          html += '<span>' + esc(l) + '</span>';
-        });
+        var html = '<strong>請注意</strong><span style="white-space:pre-line;">' + esc(noticeText || '（尚無提醒內容）') + '</span>';
         if (isAdmin()) {
           html += '<button type="button" class="btn-sm" id="btnEditNotice" style="margin-top:8px;">編輯提醒</button>';
         }
@@ -1696,7 +1699,7 @@
         });
       }
       function saveNotice() {
-        var val = String($('noticeInput').value || '').split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l !== ''; }).join('\n');
+        var val = $('noticeInput').value || '';
         if (!val) { $('noticeError').textContent = '提醒內容不能空白'; return; }
         noticeText = val;
         persist(sb.from('settings').upsert({ key: 'notice', value: val }, { onConflict: 'key' }), '同步失敗：儲存提醒');
