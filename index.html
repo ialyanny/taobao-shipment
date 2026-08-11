@@ -258,6 +258,23 @@
     .sync-status.online { background: #e6f4ea; color: var(--green); }
     .sync-status.offline { background: #fdedec; color: var(--error); }
 
+    .dafa-config { margin-bottom: 12px; }
+    .dafa-config label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+    .dafa-config input {
+      width: 100%; padding: 10px 12px; font-size: 14px;
+      border: 1px solid var(--border); border-radius: 6px; outline: none; background: #fff;
+    }
+    .dafa-config input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(103, 58, 183, .25); }
+    .dafa-result {
+      margin-top: 12px; padding: 12px 14px; border-radius: 6px;
+      font-size: 14px; line-height: 1.8; background: #f8f9fa; border: 1px solid var(--border);
+      white-space: pre-wrap; word-break: break-all;
+    }
+    .dafa-result .ok { color: var(--green); font-weight: 600; }
+    .dafa-result .err { color: var(--error); font-weight: 600; }
+    .dafa-result .warn { color: var(--orange); font-weight: 600; }
+    .dafa-login-state { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
     .user-bar {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
       margin: 12px 0 0; font-size: 14px; color: var(--muted);
@@ -513,6 +530,22 @@
           </div>
           <div id="importResult"></div>
         </div>
+        <div class="card" id="dafaCard">
+          <h2 style="font-size:20px;margin-bottom:8px;">大發集運同步</h2>
+          <p class="hint">一鍵與大發集運倉同步：把倉內包裹的實際重量、到貨時間帶回系統，未登錄包裹自動加入待認領清單；同時把我們系統登錄的包裹（含品名與備註）預報到大發。</p>
+          <div class="dafa-config">
+            <label>大發帳號（登入網站 df.omszt.com 的帳號）</label>
+            <input type="text" id="dafaUser" placeholder="例如 郭武昌168" autocomplete="off">
+            <label>大發密碼</label>
+            <input type="password" id="dafaPass" autocomplete="off">
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-clear" id="btnDafaSave">儲存帳號</button>
+            <button type="button" class="btn-green" id="btnDafaSync">一鍵同步大發集運</button>
+          </div>
+          <div class="dafa-login-state" id="dafaState"></div>
+          <div class="dafa-result" id="dafaResult" style="display:none;"></div>
+        </div>
       </section>
 
       <section id="tab-batches" class="tab-panel" style="display:none">
@@ -561,6 +594,12 @@
       var records = [];
       var batches = [];
       var noticeText = '廈門海快專線集運倉無法運送食品。\n11 公斤以上才會集運，每公斤 8 元人民幣，包稅 10 元人民幣。';
+      var dafaUser = '';
+      var dafaPass = '';
+      var DAFA_BASE = 'https://df.omszt.com/siteapi/collectionSite/mall';
+      var DAFA_SHOP_ID = '896115513910222848';
+      var DAFA_WAREHOUSE = 'TMYT-PT';
+      var dafaToken = null;
       var currentTab = 'register';
       var currentFilter = 'all';
       var selected = {};
@@ -679,6 +718,8 @@
         records = d.records;
         batches = d.batches;
         if (d.settings && d.settings.notice) noticeText = d.settings.notice;
+        if (d.settings && d.settings.dafa_user) dafaUser = d.settings.dafa_user;
+        if (d.settings && d.settings.dafa_pass) dafaPass = d.settings.dafa_pass;
         cacheSave();
         setSync('online');
         renderAll();
@@ -866,6 +907,7 @@
         $('statsTitle').textContent = isAdmin() ? '每個人集運統計' : '我的包裹統計';
         $('filterRow').style.display = isAdmin() ? '' : 'none';
         $('backupCard').style.display = isAdmin() ? '' : 'none';
+        $('dafaCard').style.display = isAdmin() ? '' : 'none';
         $('batchTabBtn').style.display = isAdmin() ? '' : 'none';
         $('selectAllTh').style.display = isAdmin() ? '' : 'none';
         $('btnCreateBatch').style.display = isAdmin() ? '' : 'none';
@@ -1738,6 +1780,189 @@
         showToast('提醒事項已更新');
       }
 
+      function dafaLog(mode, text) {
+        var el = $('dafaResult');
+        if (!el) return;
+        el.style.display = 'block';
+        el.innerHTML = '<span class="' + mode + '">' + esc(text) + '</span>';
+      }
+      function dafaSetState(text) {
+        var el = $('dafaState');
+        if (el) el.textContent = text;
+      }
+      function dafaSaveConfig() {
+        var u = $('dafaUser').value.trim();
+        var p = $('dafaPass').value;
+        if (!u || !p) { dafaLog('err', '請先填寫大發帳號與密碼'); return; }
+        dafaUser = u; dafaPass = p;
+        persist(sb.from('settings').upsert({ key: 'dafa_user', value: u }, { onConflict: 'key' }), '同步失敗：儲存大發帳號');
+        persist(sb.from('settings').upsert({ key: 'dafa_pass', value: p }, { onConflict: 'key' }), '同步失敗：儲存大發密碼');
+        dafaLog('ok', '大發帳號已儲存');
+      }
+      function dafaLogin() {
+        if (!dafaUser || !dafaPass) return Promise.reject(new Error('未設定大發帳號'));
+        var body = 'username=' + encodeURIComponent(dafaUser)
+          + '&password=' + encodeURIComponent(dafaPass)
+          + '&shopId=' + DAFA_SHOP_ID;
+        return fetch(DAFA_BASE + '/portal/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body
+        }).then(function (res) {
+          if (!res.ok) throw new Error('登入失敗 HTTP ' + res.status);
+          var tok = res.headers.get('authorization');
+          if (!tok) throw new Error('登入失敗：未取得 token');
+          dafaToken = tok;
+          return tok;
+        });
+      }
+      function dafaPost(path, payload) {
+        return fetch(DAFA_BASE + path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'authorization': dafaToken },
+          body: JSON.stringify(payload)
+        }).then(function (res) {
+          if (!res.ok) throw new Error('請求失敗 HTTP ' + res.status);
+          return res.json().then(function (j) {
+            if (j && j.success === false) throw new Error(j.msg || '請求失敗');
+            return j;
+          });
+        });
+      }
+      function dafaQueryPackages(pageNum, pageSize, statusList) {
+        var payload = { pageNum: pageNum, pageSize: pageSize };
+        if (statusList && statusList.length) payload.packageStatusList = statusList;
+        return dafaPost('/member-package/query/page-list', payload).then(function (j) {
+          return (j && j.data) || {};
+        });
+      }
+      function dafaFetchAllPackages(statusList) {
+        var all = [];
+        var size = 200;
+        function page(pn) {
+          return dafaQueryPackages(pn, size, statusList).then(function (d) {
+            var list = (d.list || []).slice();
+            all = all.concat(list);
+            var total = d.total || 0;
+            if (all.length < total && list.length > 0) return page(pn + 1);
+            return all;
+          });
+        }
+        return page(0);
+      }
+      function kgOf(v) {
+        if (v == null || v === '') return null;
+        var n = parseFloat(v);
+        if (isNaN(n)) return null;
+        return round2(n / 1000);
+      }
+      function syncDafa() {
+        var btn = $('btnDafaSync');
+        if (btn) btn.disabled = true;
+        dafaSetState('登入中…');
+        dafaLogin().then(function () {
+          dafaSetState('已登入，讀取倉內包裹…');
+          return dafaFetchAllPackages(['110', '120', '130']);
+        }).then(function (pkgs) {
+          dafaSetState('比對倉內包裹…');
+          var matched = 0, updated = 0, unmatched = [];
+          var map = {};
+          records.forEach(function (r) { if (r.orderNo) map[String(r.orderNo)] = r; });
+
+          pkgs.forEach(function (p) {
+            var no = p.firstWaybillNo;
+            if (!no) return;
+            var rec = map[String(no)];
+            var update = {};
+            var w = kgOf(p.grossWeight);
+            var arrive = p.ibReceiptTime ? parseArrival(p.ibReceiptTime) : null;
+            var cust = p.customerRemark || p.remark || '';
+            if (w != null) { update.weight = w; if (rec) rec.weight = w; }
+            if (arrive != null) { update.arrived_date = arrive; if (rec) rec.arrivedDate = arrive; }
+            if (cust) { update.remark = cust; if (rec) rec.remark = cust; }
+            if (rec) {
+              if (Object.keys(update).length) {
+                persist(sb.from('records').update(update).eq('id', rec.id), '同步失敗：更新包裹');
+                updated++;
+              }
+              matched++;
+            } else {
+              if (/^TEST-/i.test(no)) return;
+              unmatched.push({ orderNo: no, weight: w, arrivedDate: arrive, remark: cust, itemName: p.itemName });
+            }
+          });
+
+          var newlyPushed = pushPendingPackagesList(unmatched);
+          cacheSave();
+          renderAll();
+
+          var ours = records.filter(function (r) { return r.name && r.item; });
+          var dafaNos = {};
+          pkgs.forEach(function (p) { if (p.firstWaybillNo) dafaNos[String(p.firstWaybillNo)] = true; });
+          var toForecast = ours.filter(function (r) { return !dafaNos[String(r.orderNo)]; });
+          if (toForecast.length) {
+            dafaSetState('比對大發全部單號，找出需預報的包裹…');
+            return dafaFetchAllPackages().then(function (allPkgs) {
+              allPkgs.forEach(function (p) { if (p.firstWaybillNo) dafaNos[String(p.firstWaybillNo)] = true; });
+              toForecast = ours.filter(function (r) { return !dafaNos[String(r.orderNo)]; });
+              return forecastDafaPackages(toForecast, pkgs.length, matched, updated, unmatched.length, newlyPushed);
+            });
+          }
+          finishDafaSync(pkgs.length, matched, updated, unmatched.length, newlyPushed, 0, []);
+        }).catch(function (e) {
+          dafaSetState('');
+          dafaLog('err', '同步失敗：' + (e && e.message ? e.message : e));
+        }).then(function () {
+          var btn = $('btnDafaSync');
+          if (btn) btn.disabled = false;
+        });
+      }
+      function forecastDafaPackages(toForecast, total, matched, updated, unmatchN, pushed) {
+        if (!toForecast.length) {
+          finishDafaSync(total, matched, updated, unmatchN, pushed, 0, []);
+          return;
+        }
+        var forecasted = 0, failed = [];
+        var i = 0;
+        function next() {
+          if (i >= toForecast.length) {
+            finishDafaSync(total, matched, updated, unmatchN, pushed, forecasted, failed);
+            return;
+          }
+          var r = toForecast[i++];
+          dafaSetState('預報包裹到大發…（' + i + '/' + toForecast.length + '）');
+          var pkg = {
+            firstWaybillNo: r.orderNo,
+            waybillNo: r.orderNo,
+            remark: r.remark || r.name || '',
+            forecastTotalPiece: 1,
+            warehouseCode: DAFA_WAREHOUSE,
+            unpackSendMode: '',
+            detailList: [{ itemName: r.item, itemQty: 1, itemPrice: toNum(r.amount) }]
+          };
+          dafaPost('/member-package/save?untransfer=true', { param: [pkg] })
+            .then(function (res) {
+              forecasted++;
+              if (res && res.data && res.data[0] && res.data[0].status === false) failed.push(r.orderNo);
+              next();
+            }).catch(function (e) {
+              failed.push(r.orderNo + '：' + e.message);
+              next();
+            });
+        }
+        next();
+      }
+      function finishDafaSync(total, matched, updated, unmatchN, pushed, forecasted, failed) {
+        dafaSetState('');
+        var msg = '同步完成。大發包裹共 ' + total + ' 筆：\n'
+          + ' ・已比對到系統包裹 ' + matched + ' 筆，其中 ' + updated + ' 筆已更新重量／到貨時間／備註\n'
+          + ' ・未登錄包裹 ' + unmatchN + ' 筆，已加入待認領 ' + pushed + ' 筆\n'
+          + ' ・系統登錄但大發尚未預報的包裹，已預報 ' + forecasted + ' 筆';
+        if (failed.length) msg += '\n失敗 ' + failed.length + ' 筆：' + failed.slice(0, 10).join('、');
+        var cls = failed.length ? 'warn' : 'ok';
+        dafaLog(cls, msg);
+      }
+
       function renderAll() {
         applyView();
         renderNotice();
@@ -1827,6 +2052,12 @@
         var btnPush = $('btnPushPending');
         if (btnPush) btnPush.addEventListener('click', pushPendingPackages);
 
+        var btnDafaSave = $('btnDafaSave');
+        if (btnDafaSave) btnDafaSave.addEventListener('click', dafaSaveConfig);
+
+        var btnDafaSync = $('btnDafaSync');
+        if (btnDafaSync) btnDafaSync.addEventListener('click', syncDafa);
+
         var btnLogin = $('btnLogin');
         if (btnLogin) btnLogin.addEventListener('click', doLogin);
 
@@ -1891,6 +2122,9 @@
         if (btnNoticeCancel) btnNoticeCancel.addEventListener('click', function () {
           $('noticeOverlay').style.display = 'none';
         });
+
+        var du = $('dafaUser'); if (du) du.value = dafaUser || '';
+        var dp = $('dafaPass'); if (dp) dp.value = dafaPass || '';
 
         currentUser = loadUser();
 
