@@ -474,7 +474,7 @@
               <thead>
                 <tr>
                   <th id="selectAllTh" style="width:32px;"><input type="checkbox" id="selectAll"></th>
-                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>重量</th><th>到貨日期</th><th>備註</th><th>狀態</th><th></th>
+                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>重量</th><th>到貨日期</th><th>狀態</th><th></th>
                 </tr>
               </thead>
               <tbody id="recordsBody"></tbody>
@@ -1106,8 +1106,6 @@
           tdWeight.textContent = r.weight != null ? r.weight : '';
           var tdArrived = document.createElement('td');
           tdArrived.textContent = r.arrivedDate != null ? fmtTime(r.arrivedDate) : '';
-          var tdRemark = document.createElement('td');
-          tdRemark.textContent = r.remark || '';
           var tdStatus = document.createElement('td');
           var badge = document.createElement('span');
           if (r.batchId == null) {
@@ -1153,7 +1151,6 @@
           tr.appendChild(tdAmount);
           tr.appendChild(tdWeight);
           tr.appendChild(tdArrived);
-          tr.appendChild(tdRemark);
           tr.appendChild(tdStatus);
           tr.appendChild(tdAct);
           tbody.appendChild(tr);
