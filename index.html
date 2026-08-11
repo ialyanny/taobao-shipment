@@ -149,6 +149,13 @@
     .person-nums { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.7; }
     .person-nums b { color: var(--primary-dark); }
 
+    @media (max-width: 640px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .person-card { padding: 10px 10px; }
+      .person-name { font-size: 14px; }
+      .person-nums { font-size: 12px; line-height: 1.6; }
+    }
+
     .filter-row { margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
     .filter-btn {
       padding: 6px 14px;
