@@ -275,6 +275,25 @@
     .dafa-result .warn { color: var(--orange); font-weight: 600; }
     .dafa-login-state { font-size: 13px; color: var(--muted); margin-top: 8px; }
 
+    .img-lightbox {
+      position: fixed; inset: 0; background: rgba(0,0,0,.85);
+      display: flex; align-items: center; justify-content: center; z-index: 300; padding: 24px;
+      flex-direction: column;
+    }
+    .img-lightbox img { max-width: 92vw; max-height: 80vh; object-fit: contain; border-radius: 4px; }
+    .img-lightbox .lb-close {
+      position: absolute; top: 16px; right: 20px; background: none; border: none;
+      color: #fff; font-size: 30px; cursor: pointer; line-height: 1;
+    }
+    .img-lightbox .lb-nav {
+      margin-top: 12px; display: flex; gap: 10px; align-items: center; color: #fff; font-size: 14px;
+    }
+    .img-lightbox .lb-nav button {
+      background: rgba(255,255,255,.2); color: #fff; border: none; border-radius: 4px;
+      padding: 6px 14px; cursor: pointer; font-size: 14px;
+    }
+    .img-lightbox .lb-nav button:hover { background: rgba(255,255,255,.35); }
+
     .user-bar {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
       margin: 12px 0 0; font-size: 14px; color: var(--muted);
@@ -505,7 +524,7 @@
               <thead>
                 <tr>
                   <th id="selectAllTh" style="width:32px;"><input type="checkbox" id="selectAll"></th>
-                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>重量</th><th>到貨日期</th><th>狀態</th><th></th>
+                  <th>時間</th><th>姓名</th><th>單號</th><th>品項</th><th>金額</th><th>重量</th><th>到貨日期</th><th>照片</th><th>狀態</th><th></th>
                 </tr>
               </thead>
               <tbody id="recordsBody"></tbody>
@@ -559,6 +578,11 @@
   </div>
 
   <div class="toast" id="toast"></div>
+  <div class="img-lightbox" id="imgLightbox" style="display:none;">
+    <button type="button" class="lb-close" id="lbClose">×</button>
+    <img id="lbImg" alt="" referrerpolicy="no-referrer">
+    <div class="lb-nav" id="lbNav"></div>
+  </div>
   <div id="printArea"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -652,10 +676,19 @@
       }
 
       function recRow(r) {
-        return { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived, weight: r.weight != null ? r.weight : null, arrived_date: r.arrivedDate != null ? r.arrivedDate : null, remark: r.remark != null ? r.remark : null };
+        var row = { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived, weight: r.weight != null ? r.weight : null, arrived_date: r.arrivedDate != null ? r.arrivedDate : null, remark: r.remark != null ? r.remark : null };
+        if (r.packageImages && r.packageImages.length) row.package_images = JSON.stringify(r.packageImages);
+        return row;
       }
       function recFrom(row) {
-        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived, weight: row.weight != null ? row.weight : null, arrivedDate: row.arrived_date != null ? row.arrived_date : null, remark: row.remark != null ? row.remark : null };
+        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived, weight: row.weight != null ? row.weight : null, arrivedDate: row.arrived_date != null ? row.arrived_date : null, remark: row.remark != null ? row.remark : null, packageImages: row.package_images ? parseImageList(row.package_images) : null };
+      }
+      function parseImageList(v) {
+        if (Array.isArray(v)) return v.slice();
+        if (typeof v === 'string' && v) {
+          try { var a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+        }
+        return [];
       }
       function batchRow(b) { return { id: b.id, name: b.name, created_at: b.createdAt }; }
       function batchFrom(row) { return { id: row.id, name: row.name, createdAt: row.created_at }; }
@@ -923,6 +956,38 @@
         showToast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
       }
 
+      var lbImages = [], lbIndex = 0;
+      function openImageLightbox(images, index) {
+        if (!images || !images.length) return;
+        lbImages = images.slice();
+        lbIndex = index || 0;
+        updateLightbox();
+        $('imgLightbox').style.display = 'flex';
+      }
+      function closeLightbox() {
+        $('imgLightbox').style.display = 'none';
+        lbImages = [];
+      }
+      function updateLightbox() {
+        $('lbImg').src = lbImages[lbIndex];
+        var nav = $('lbNav');
+        if (lbImages.length > 1) {
+          nav.innerHTML = '<button type="button" id="lbPrev">上一張</button>'
+            + '<span>' + (lbIndex + 1) + ' / ' + lbImages.length + '</span>'
+            + '<button type="button" id="lbNext">下一張</button>';
+          $('lbPrev').addEventListener('click', function () {
+            lbIndex = (lbIndex + lbImages.length - 1) % lbImages.length;
+            updateLightbox();
+          });
+          $('lbNext').addEventListener('click', function () {
+            lbIndex = (lbIndex + 1) % lbImages.length;
+            updateLightbox();
+          });
+        } else {
+          nav.innerHTML = '';
+        }
+      }
+
       function switchTab(tab) {
         if (tab === 'batches' && !isAdmin()) tab = 'records';
         currentTab = tab;
@@ -1162,6 +1227,29 @@
           tdWeight.textContent = r.weight != null ? r.weight : '';
           var tdArrived = document.createElement('td');
           tdArrived.textContent = r.arrivedDate != null ? fmtTime(r.arrivedDate) : '';
+          var tdImg = document.createElement('td');
+          if (r.packageImages && r.packageImages.length) {
+            var imgWrap = document.createElement('span');
+            imgWrap.style.cssText = 'display:inline-block;vertical-align:middle;';
+            var img = document.createElement('img');
+            img.src = r.packageImages[0];
+            img.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border);';
+            img.referrerPolicy = 'no-referrer';
+            img.loading = 'lazy';
+            img.addEventListener('click', function () {
+              openImageLightbox(r.packageImages, 0);
+            });
+            imgWrap.appendChild(img);
+            if (r.packageImages.length > 1) {
+              var more = document.createElement('span');
+              more.textContent = '+' + (r.packageImages.length - 1);
+              more.style.cssText = 'font-size:10px;color:var(--muted);margin-left:2px;';
+              more.style.cssText += 'cursor:pointer;';
+              more.addEventListener('click', function () { openImageLightbox(r.packageImages, 0); });
+              imgWrap.appendChild(more);
+            }
+            tdImg.appendChild(imgWrap);
+          }
           var tdStatus = document.createElement('td');
           var badge = document.createElement('span');
           if (r.batchId == null) {
@@ -1207,6 +1295,7 @@
           tr.appendChild(tdAmount);
           tr.appendChild(tdWeight);
           tr.appendChild(tdArrived);
+          tr.appendChild(tdImg);
           tr.appendChild(tdStatus);
           tr.appendChild(tdAct);
           tbody.appendChild(tr);
@@ -1583,6 +1672,15 @@
           if (remark) meta += '　｜　備註：' + esc(remark);
           info.innerHTML = '<div class="p-order">' + esc(r.orderNo) + '</div><div class="p-meta">' + meta + '</div>';
           row.appendChild(info);
+          if (r.packageImages && r.packageImages.length) {
+            var img = document.createElement('img');
+            img.src = r.packageImages[0];
+            img.referrerPolicy = 'no-referrer';
+            img.loading = 'lazy';
+            img.style.cssText = 'width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border);flex:none;';
+            img.addEventListener('click', function () { openImageLightbox(r.packageImages, 0); });
+            row.appendChild(img);
+          }
           if (isAdmin()) {
             var rmWrap = document.createElement('div');
             rmWrap.className = 'pending-remark-wrap';
@@ -1829,6 +1927,18 @@
           });
         });
       }
+      function dafaQueryImages(firstWaybillNo, warehouseCode) {
+        var path = '/member-package/queryImages?firstWaybillNo=' + encodeURIComponent(firstWaybillNo)
+          + '&companyCode=tmytsc&warehouseCode=' + encodeURIComponent(warehouseCode || DAFA_WAREHOUSE);
+        return dafaPost(path, {}).then(function (j) {
+          var list = (j && j.data) || [];
+          return list.map(function (im) {
+            var u = im.url || im.resizeUrl || '';
+            if (u.indexOf('http://') === 0) u = 'https://' + u.slice(7);
+            return u;
+          }).filter(Boolean);
+        });
+      }
       function dafaQueryPackages(pageNum, pageSize, statusList) {
         var payload = { pageNum: pageNum, pageSize: pageSize };
         if (statusList && statusList.length) payload.packageStatusList = statusList;
@@ -1896,19 +2006,41 @@
           cacheSave();
           renderAll();
 
-          var ours = records.filter(function (r) { return r.name && r.item; });
-          var dafaNos = {};
-          pkgs.forEach(function (p) { if (p.firstWaybillNo) dafaNos[String(p.firstWaybillNo)] = true; });
-          var toForecast = ours.filter(function (r) { return !dafaNos[String(r.orderNo)]; });
-          if (toForecast.length) {
-            dafaSetState('比對大發全部單號，找出需預報的包裹…');
-            return dafaFetchAllPackages().then(function (allPkgs) {
-              allPkgs.forEach(function (p) { if (p.firstWaybillNo) dafaNos[String(p.firstWaybillNo)] = true; });
-              toForecast = ours.filter(function (r) { return !dafaNos[String(r.orderNo)]; });
-              return forecastDafaPackages(toForecast, pkgs.length, matched, updated, unmatched.length, newlyPushed);
+          dafaSetState('抓取包裹照片…');
+          var imgTasks = pkgs.filter(function (p) { return p.firstWaybillNo; })
+            .map(function (p) {
+              return dafaQueryImages(p.firstWaybillNo, p.warehouseCode).then(function (urls) {
+                var rec = null;
+                for (var i = 0; i < records.length; i++) {
+                  if (String(records[i].orderNo) === String(p.firstWaybillNo)) { rec = records[i]; break; }
+                }
+                if (!rec) return;
+                var current = rec.packageImages || [];
+                var same = urls.length === current.length && urls.every(function (u, i) { return u === current[i]; });
+                if (!same) {
+                  rec.packageImages = urls;
+                  persist(sb.from('records').update({ package_images: urls.length ? JSON.stringify(urls) : null }).eq('id', rec.id), '同步失敗：更新照片');
+                }
+              }).catch(function () {});
             });
-          }
-          finishDafaSync(pkgs.length, matched, updated, unmatched.length, newlyPushed, 0, []);
+          return Promise.all(imgTasks).then(function () {
+            cacheSave();
+            renderAll();
+
+            var ours = records.filter(function (r) { return r.name && r.item; });
+            var dafaNos = {};
+            pkgs.forEach(function (p) { if (p.firstWaybillNo) dafaNos[String(p.firstWaybillNo)] = true; });
+            var toForecast = ours.filter(function (r) { return !dafaNos[String(r.orderNo)]; });
+            if (toForecast.length) {
+              dafaSetState('比對大發全部單號，找出需預報的包裹…');
+              return dafaFetchAllPackages().then(function (allPkgs) {
+                allPkgs.forEach(function (p) { if (p.firstWaybillNo) dafaNos[String(p.firstWaybillNo)] = true; });
+                toForecast = ours.filter(function (r) { return !dafaNos[String(r.orderNo)]; });
+                return forecastDafaPackages(toForecast, pkgs.length, matched, updated, unmatched.length, newlyPushed);
+              });
+            }
+            finishDafaSync(pkgs.length, matched, updated, unmatched.length, newlyPushed, 0, []);
+          });;
         }).catch(function (e) {
           dafaSetState('');
           dafaLog('err', '同步失敗：' + (e && e.message ? e.message : e));
@@ -2057,6 +2189,12 @@
 
         var btnDafaSync = $('btnDafaSync');
         if (btnDafaSync) btnDafaSync.addEventListener('click', syncDafa);
+
+        var lbClose = $('lbClose');
+        if (lbClose) lbClose.addEventListener('click', closeLightbox);
+        $('imgLightbox').addEventListener('click', function (e) {
+          if (e.target === $('imgLightbox')) closeLightbox();
+        });
 
         var btnLogin = $('btnLogin');
         if (btnLogin) btnLogin.addEventListener('click', doLogin);
