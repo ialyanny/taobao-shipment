@@ -368,11 +368,31 @@
         <label>到貨日期（留空清除）</label>
         <input type="text" id="editArrivedDate" placeholder="例如 2024-01-01 或 2024/1/1 10:30" autocomplete="off">
       </div>
+      <div class="field">
+        <label>備註</label>
+        <input type="text" id="editRemark" placeholder="例如 昌" autocomplete="off">
+      </div>
       <div class="btn-row">
         <button type="button" class="btn-submit" id="btnEditSave">儲存修改</button>
         <button type="button" class="btn-clear" id="btnEditCancel">取消</button>
       </div>
       <div class="error" id="editError"></div>
+    </div>
+  </div>
+
+  <div class="login-mask" id="noticeOverlay" style="display:none">
+    <div class="login-card">
+      <h2>編輯提醒事項</h2>
+      <p>此內容會顯示在「登錄包裹」頁最上方，所有使用者都會看到。</p>
+      <div class="field">
+        <label>提醒文字（每行一行，空白行會自動去除）</label>
+        <textarea id="noticeInput" rows="5" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--border);border-radius:6px;outline:none;resize:vertical;font-family:inherit;"></textarea>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn-submit" id="btnNoticeSave">儲存提醒</button>
+        <button type="button" class="btn-clear" id="btnNoticeCancel">取消</button>
+      </div>
+      <div class="error" id="noticeError"></div>
     </div>
   </div>
 
@@ -392,11 +412,9 @@
       <section id="tab-register" class="tab-panel">
         <div class="card">
           <h2 style="font-size:20px;margin-bottom:8px;">登錄新包裹</h2>
-          <div class="notice">
+          <div class="notice" id="noticeBox">
             <strong>請注意</strong>
-            • 廈門海快集運倉無法運送食品<br>
-            • 11/14 之後運費每公斤調漲 0.5 人民幣，原 6.5 → 7 元，包稅 2 元，每公斤運費 9 人民幣<br>
-            • 12/15 之後再漲價，11 公斤以上，每公斤 8 元人民幣，包稅 10 元人民幣
+            <span id="noticeText">廈門海快專線集運倉無法運送食品。<br>11 公斤以上才會集運，每公斤 8 元人民幣，包稅 10 元人民幣。</span>
           </div>
           <form id="registerForm" novalidate>
             <div class="field">
@@ -528,6 +546,7 @@
       var sb = null;
       var records = [];
       var batches = [];
+      var noticeText = '廈門海快專線集運倉無法運送食品。\n11 公斤以上才會集運，每公斤 8 元人民幣，包稅 10 元人民幣。';
       var currentTab = 'register';
       var currentFilter = 'all';
       var selected = {};
@@ -580,16 +599,16 @@
       }
 
       function recRow(r) {
-        return { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived, weight: r.weight != null ? r.weight : null, arrived_date: r.arrivedDate != null ? r.arrivedDate : null };
+        return { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived, weight: r.weight != null ? r.weight : null, arrived_date: r.arrivedDate != null ? r.arrivedDate : null, remark: r.remark != null ? r.remark : null };
       }
       function recFrom(row) {
-        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived, weight: row.weight != null ? row.weight : null, arrivedDate: row.arrived_date != null ? row.arrived_date : null };
+        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived, weight: row.weight != null ? row.weight : null, arrivedDate: row.arrived_date != null ? row.arrived_date : null, remark: row.remark != null ? row.remark : null };
       }
       function batchRow(b) { return { id: b.id, name: b.name, created_at: b.createdAt }; }
       function batchFrom(row) { return { id: row.id, name: row.name, createdAt: row.created_at }; }
 
       function cacheSave() {
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ records: records, batches: batches })); } catch (e) {}
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ records: records, batches: batches, notice: noticeText })); } catch (e) {}
       }
       function cacheLoad() {
         try {
@@ -621,10 +640,18 @@
         ]).then(function (res) {
           if (res[0].error) throw res[0].error;
           if (res[1].error) throw res[1].error;
-          return {
+          var d = {
             records: (res[0].data || []).map(recFrom),
             batches: (res[1].data || []).map(batchFrom)
           };
+          return sb.from('settings').select('*').then(function (sres) {
+            if (!sres.error) {
+              var settings = {};
+              (sres.data || []).forEach(function (s) { settings[s.key] = s.value; });
+              d.settings = settings;
+            }
+            return d;
+          }).catch(function () { return d; });
         });
       }
       function seedShared() {
@@ -637,6 +664,7 @@
       function applyData(d) {
         records = d.records;
         batches = d.batches;
+        if (d.settings && d.settings.notice) noticeText = d.settings.notice;
         cacheSave();
         setSync('online');
         renderAll();
@@ -690,6 +718,7 @@
         channel
           .on('postgres_changes', { event: '*', schema: 'public', table: 'records' }, function () { refreshQuiet(); })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'batches' }, function () { refreshQuiet(); })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, function () { refreshQuiet(); })
           .subscribe();
         setInterval(function () { refreshQuiet(); }, 15000);
       }
@@ -1409,6 +1438,7 @@
             var cTrack = col('首程物流单号'); if (cTrack < 0) cTrack = col('单号');
             var cWeight = col('重量');
             var cArrive = col('收货时间');
+            var cRemark = col('备注'); if (cRemark < 0) cRemark = col('備註');
             if (cTrack < 0) { showToast('找不到「首程物流单号」欄位'); return; }
 
             var matched = 0;
@@ -1421,6 +1451,7 @@
               var trackNo = String(row[cTrack]).trim();
               var weight = cWeight >= 0 && row[cWeight] != null ? String(row[cWeight]).trim() : '';
               var arriveMs = cArrive >= 0 ? parseArrival(row[cArrive]) : null;
+              var remark = cRemark >= 0 && row[cRemark] != null ? String(row[cRemark]).trim() : '';
 
               var rec = null;
               for (var i = 0; i < records.length; i++) {
@@ -1428,13 +1459,14 @@
               }
               if (!rec) {
                 unmatched.push(trackNo);
-                unmatchedPkgs.push({ orderNo: trackNo, weight: weight !== '' ? weight : null, arrivedDate: arriveMs });
+                unmatchedPkgs.push({ orderNo: trackNo, weight: weight !== '' ? weight : null, arrivedDate: arriveMs, remark: remark });
                 continue;
               }
 
               var update = {};
               if (weight !== '') { update.weight = weight; rec.weight = weight; }
               if (arriveMs != null) { update.arrived_date = arriveMs; rec.arrivedDate = arriveMs; }
+              if (remark !== '') { update.remark = remark; rec.remark = remark; }
               if (!Object.keys(update).length) { noWeightArrive.push(trackNo); continue; }
               persist(sb.from('records').update(update).eq('id', rec.id), '同步失敗：更新包裹');
               matched++;
@@ -1475,8 +1507,7 @@
           if (PENDING_PACKAGES[i].orderNo === orderNo) return PENDING_PACKAGES[i].remark || '';
         }
         return '';
-      }
-      function renderPending() {
+      }      function renderPending() {
         var card = $('pendingCard');
         var pend = pendingRecords();
         $('pendingCount').textContent = pend.length;
@@ -1490,7 +1521,7 @@
           var info = document.createElement('div');
           info.className = 'pending-info';
           var meta = '重量 ' + (r.weight != null ? esc(r.weight) : '-') + ' kg　｜　到貨 ' + (r.arrivedDate != null ? fmtTime(r.arrivedDate) : '-');
-          var remark = pendingRemark(r.orderNo);
+          var remark = r.remark || pendingRemark(r.orderNo);
           if (remark) meta += '　｜　備註：' + esc(remark);
           info.innerHTML = '<div class="p-order">' + esc(r.orderNo) + '</div><div class="p-meta">' + meta + '</div>';
           row.appendChild(info);
@@ -1524,6 +1555,7 @@
         $('editAmount').value = r.amount || '';
         $('editWeight').value = r.weight != null ? r.weight : '';
         $('editArrivedDate').value = fmtArrivalInput(r.arrivedDate);
+        $('editRemark').value = r.remark || '';
         $('editError').textContent = '';
         var dl = $('editNameList');
         dl.innerHTML = '';
@@ -1549,6 +1581,7 @@
         var amount = $('editAmount').value.trim();
         var weightRaw = $('editWeight').value.trim();
         var arriveRaw = $('editArrivedDate').value.trim();
+        var remark = $('editRemark').value.trim();
         if (!name || !orderNo || !item || !amount) {
           err.textContent = '姓名、單號、品項、金額為必填';
           return;
@@ -1566,10 +1599,10 @@
 
         var update = {
           name: name, order_no: orderNo, item: item, amount: amount,
-          weight: weight, arrived_date: arriveMs
+          weight: weight, arrived_date: arriveMs, remark: remark
         };
         r.name = name; r.orderNo = orderNo; r.item = item; r.amount = amount;
-        r.weight = weight; r.arrivedDate = arriveMs;
+        r.weight = weight; r.arrivedDate = arriveMs; r.remark = remark;
         persist(sb.from('records').update(update).eq('id', r.id), '同步失敗：修改包裹');
         closeEditModal();
         cacheSave();
@@ -1624,7 +1657,8 @@
             batchId: null,
             arrived: false,
             weight: p.weight != null ? p.weight : null,
-            arrivedDate: p.arrivedDate != null ? p.arrivedDate : null
+            arrivedDate: p.arrivedDate != null ? p.arrivedDate : null,
+            remark: p.remark || null
           };
           records.push(rec);
           persist(sb.from('records').insert([recRow(rec)]), '同步失敗：推播包裹');
@@ -1640,8 +1674,41 @@
         else showToast('沒有新的未登錄包裹需要推播');
       }
 
+      function renderNotice() {
+        var box = $('noticeBox');
+        if (!box) return;
+        var lines = String(noticeText || '').split('\n').filter(function (l) { return l.trim() !== ''; });
+        var html = '<strong>請注意</strong>';
+        if (!lines.length) lines.push('（尚無提醒內容）');
+        lines.forEach(function (l) {
+          html += '<span>' + esc(l) + '</span>';
+        });
+        if (isAdmin()) {
+          html += '<button type="button" class="btn-sm" id="btnEditNotice" style="margin-top:8px;">編輯提醒</button>';
+        }
+        box.innerHTML = html;
+        var btn = $('btnEditNotice');
+        if (btn) btn.addEventListener('click', function () {
+          $('noticeInput').value = noticeText || '';
+          $('noticeError').textContent = '';
+          $('noticeOverlay').style.display = 'flex';
+          $('noticeInput').focus();
+        });
+      }
+      function saveNotice() {
+        var val = String($('noticeInput').value || '').split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l !== ''; }).join('\n');
+        if (!val) { $('noticeError').textContent = '提醒內容不能空白'; return; }
+        noticeText = val;
+        persist(sb.from('settings').upsert({ key: 'notice', value: val }, { onConflict: 'key' }), '同步失敗：儲存提醒');
+        cacheSave();
+        $('noticeOverlay').style.display = 'none';
+        renderAll();
+        showToast('提醒事項已更新');
+      }
+
       function renderAll() {
         applyView();
+        renderNotice();
         renderNameList();
         renderStats();
         renderRecords();
@@ -1785,11 +1852,20 @@
           if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
         });
 
+        var btnNoticeSave = $('btnNoticeSave');
+        if (btnNoticeSave) btnNoticeSave.addEventListener('click', saveNotice);
+
+        var btnNoticeCancel = $('btnNoticeCancel');
+        if (btnNoticeCancel) btnNoticeCancel.addEventListener('click', function () {
+          $('noticeOverlay').style.display = 'none';
+        });
+
         currentUser = loadUser();
 
         var c = cacheLoad();
         records = (c && Array.isArray(c.records)) ? c.records : SEED_RECORDS.map(seedMap);
         batches = (c && Array.isArray(c.batches)) ? c.batches : [];
+        if (c && typeof c.notice === 'string') noticeText = c.notice;
         renderAll();
         renderUserBar();
 

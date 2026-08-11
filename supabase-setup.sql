@@ -17,6 +17,7 @@ create table if not exists public.records (
 -- 既有資料表若缺少新欄位，用以下指令補上（可重複執行）
 alter table public.records add column if not exists weight numeric;
 alter table public.records add column if not exists arrived_date bigint;
+alter table public.records add column if not exists remark text;
 
 create table if not exists public.batches (
   id text primary key,
@@ -24,8 +25,14 @@ create table if not exists public.batches (
   created_at bigint not null
 );
 
+create table if not exists public.settings (
+  key text primary key,
+  value text
+);
+
 alter table public.records enable row level security;
 alter table public.batches enable row level security;
+alter table public.settings enable row level security;
 
 drop policy if exists "allow all" on public.records;
 create policy "allow all" on public.records
@@ -33,6 +40,10 @@ create policy "allow all" on public.records
 
 drop policy if exists "allow all" on public.batches;
 create policy "allow all" on public.batches
+  for all using (true) with check (true);
+
+drop policy if exists "allow all" on public.settings;
+create policy "allow all" on public.settings
   for all using (true) with check (true);
 
 -- 啟用即時同步（若已存在會顯示錯誤，可忽略）
@@ -45,5 +56,11 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.batches;
+exception when others then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.settings;
 exception when others then null;
 end $$;
