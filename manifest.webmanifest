@@ -1,0 +1,32 @@
+{
+  "name": "淘寶集運管理",
+  "short_name": "集運管理",
+  "description": "管理淘寶集運包裹：登錄、統計、批次集運、大發倉同步",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0ebf8",
+  "theme_color": "#673ab7",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

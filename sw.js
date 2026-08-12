@@ -1,21 +1,49 @@
-self.addEventListener('install', function () {
-  self.skipWaiting();
+var CACHE_NAME = 'taobao-shipment-v3';
+var APP_SHELL = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png',
+  './apple-touch-icon.png'
+];
+
+self.addEventListener('install', function (event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function (cache) {
+      return cache.addAll(APP_SHELL);
+    }).then(function () {
+      return self.skipWaiting();
+    }).catch(function () { return self.skipWaiting(); })
+  );
 });
 
 self.addEventListener('activate', function (event) {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then(function (keys) {
+      return Promise.all(keys.filter(function (k) { return k !== CACHE_NAME; }).map(function (k) { return caches.delete(k); }));
+    }).then(function () {
+      return self.clients.claim();
+    })
+  );
 });
 
 self.addEventListener('fetch', function (event) {
-  if (event.request.method !== 'GET') return;
   var url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
-  var req = event.request;
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    fetch(req).then(function (resp) {
+    fetch(event.request).then(function (resp) {
       var copy = resp.clone();
-      caches.open('taobao-shipment-v1').then(function (c) { c.put(req, copy); });
+      caches.open(CACHE_NAME).then(function (c) { c.put(event.request, copy); });
       return resp;
-    }).catch(function () { return caches.match(req); })
+    }).catch(function () {
+      return caches.match(event.request).then(function (hit) {
+        if (hit) return hit;
+        if (event.request.mode === 'navigate') return caches.match('./index.html');
+        return Response.error();
+      });
+    })
   );
 });
