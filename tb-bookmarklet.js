@@ -55,13 +55,13 @@
     (item.goodsInfo || []).forEach(function (g) {
       var gi = g.item || g || {};
       if (gi.title) names.push(gi.title);
-      price += Number((((gi.priceInfo || {}).itemUnitPrice) || '0').replace(/[￥¥]/g, '')) || 0;
+      price += Number((String(((gi.priceInfo || {}).itemUnitPrice) || '0')).replace(/[￥¥]/g, '')) || 0;
       qty += Number(gi.quantity || 0) || 0;
     });
     if (!names.length && Array.isArray(item.sub)) {
       item.sub.forEach(function (sub) {
         var f = sub.fields || {};
-        if (f.title && f.title !== '保险服务') { names.push(f.title); price += Number(((f.priceInfo || {}).promotion || '0').replace(/[￥¥]/g, '')) || 0; qty += Number(f.quantity || 0) || 0; }
+        if (f.title && f.title !== '保险服务') { names.push(f.title); price += Number((String(((f.priceInfo || {}).promotion) || '0')).replace(/[￥¥]/g, '')) || 0; qty += Number(f.quantity || 0) || 0; }
       });
     }
     var payInfo = (item.payInfo || [])[0] || {};
@@ -69,7 +69,7 @@
     return {
       orderId: (item.fields && item.fields.orderId) || item.id || '',
       goodsName: names.join(',') || '快递包裹',
-      goodsMoney: Number(((payInfo.actualFee || {}).value || String(price || 1)).replace(/[￥¥]/g, '')) || price || 1,
+      goodsMoney: Number(String(((payInfo.actualFee || {}).value) || String(price || 1)).replace(/[￥¥]/g, '')) || price || 1,
       goodsAccount: qty || 1,
       shopName: (sellerInfo.seller && sellerInfo.seller.shopName) || '',
       raw: item
@@ -103,12 +103,116 @@
   }
 
   var statusEl = document.createElement('div');
-  statusEl.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;background:#111;color:#fff;padding:12px 16px;border-radius:8px;font:13px/1.6 sans-serif;max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,.4)';
+  statusEl.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483646;background:#111;color:#fff;padding:12px 16px;border-radius:8px;font:13px/1.6 sans-serif;max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,.4)';
   function setStatus(text) {
     statusEl.textContent = text;
     if (!statusEl.parentNode) document.body.appendChild(statusEl);
   }
+  function removeStatus() {
+    if (statusEl.parentNode) statusEl.parentNode.removeChild(statusEl);
+  }
   setStatus('正在讀取淘寶訂單…');
+
+  function showSelector(rows) {
+    removeStatus();
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2147483647;display:flex;align-items:center;justify-content:center;font:14px/1.6 -apple-system,Segoe UI,Microsoft YaHei,sans-serif;';
+    var panel = document.createElement('div');
+    panel.style.cssText = 'background:#fff;width:520px;max-width:95vw;max-height:85vh;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)';
+    var head = document.createElement('div');
+    head.style.cssText = 'padding:14px 16px;background:#6366f1;color:#fff;font-weight:600';
+    head.textContent = '選擇要導入的包裹（勾選後點「導入選取的包裹」）';
+    var sub = document.createElement('div');
+    sub.style.cssText = 'padding:8px 16px;background:#eef2ff;color:#4338ca;font-size:12px;border-bottom:1px solid #e0e7ff';
+    sub.textContent = '以物流單號為準。已申報/已預報過的請取消勾選，未產生物流單號的會以灰色顯示並自動排除。';
+    var list = document.createElement('div');
+    list.style.cssText = 'flex:1;overflow-y:auto;padding:8px 0';
+    var footer = document.createElement('div');
+    footer.style.cssText = 'padding:12px 16px;border-top:1px solid #e5e7eb;display:flex;align-items:center;gap:10px';
+    var selCount = document.createElement('span');
+    selCount.style.cssText = 'flex:1;color:#666;font-size:13px';
+    var btnNone = document.createElement('button');
+    btnNone.textContent = '全不選';
+    btnNone.style.cssText = 'border:1px solid #ccc;background:#fff;border-radius:6px;padding:7px 14px;cursor:pointer';
+    var btnAll = document.createElement('button');
+    btnAll.textContent = '全選有物流單號';
+    btnAll.style.cssText = 'border:1px solid #ccc;background:#fff;border-radius:6px;padding:7px 14px;cursor:pointer';
+    var btnGo = document.createElement('button');
+    btnGo.textContent = '導入選取的包裹（0）';
+    btnGo.style.cssText = 'background:#16a34a;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:600';
+    footer.appendChild(selCount);
+    footer.appendChild(btnNone);
+    footer.appendChild(btnAll);
+    footer.appendChild(btnGo);
+
+    var items = [];
+    rows.forEach(function (r, idx) {
+      var hasWb = !!r.waybillNo;
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid #f3f4f6;' + (hasWb ? '' : 'opacity:.55');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = hasWb;
+      cb.style.cssText = 'margin-top:4px;flex:none;width:16px;height:16px;cursor:pointer';
+      var body = document.createElement('div');
+      body.style.cssText = 'flex:1;min-width:0';
+      var wbLine = document.createElement('div');
+      wbLine.style.cssText = 'font-weight:700;color:#111;font-size:14px;word-break:break-all';
+      wbLine.textContent = hasWb ? ('📦 ' + r.waybillNo) : '⚠️ 無物流單號（尚未發貨）';
+      var info = document.createElement('div');
+      info.style.cssText = 'color:#555;font-size:12px;margin-top:2px;word-break:break-all';
+      info.textContent = r.itemName + (r.itemPrice ? '　¥' + r.itemPrice : '') + (r.shopName ? '　｜　' + r.shopName : '');
+      var subLine = document.createElement('div');
+      subLine.style.cssText = 'color:#999;font-size:11px;margin-top:2px;word-break:break-all';
+      subLine.textContent = '訂單號 ' + r.orderNo;
+      body.appendChild(wbLine);
+      body.appendChild(info);
+      body.appendChild(subLine);
+      row.appendChild(cb);
+      row.appendChild(body);
+      list.appendChild(row);
+      if (!hasWb) cb.disabled = true;
+      cb.addEventListener('change', updateCount);
+      items.push({ cb: cb, hasWb: hasWb });
+      function updateCount() {
+        var n = items.filter(function (x) { return x.cb.checked; }).length;
+        btnGo.textContent = '導入選取的包裹（' + n + '）';
+        selCount.textContent = '已選 ' + n + ' / ' + rows.length + ' 筆';
+      }
+      updateCount();
+    });
+
+    btnNone.addEventListener('click', function () { rows.forEach(function (r, i) { if (items[i].hasWb) items[i].cb.checked = false; }); updateCountAll(); });
+    function updateCountAll() {
+      var n = items.filter(function (x) { return x.cb.checked; }).length;
+      btnGo.textContent = '導入選取的包裹（' + n + '）';
+      selCount.textContent = '已選 ' + n + ' / ' + rows.length + ' 筆';
+    }
+    btnAll.addEventListener('click', function () { rows.forEach(function (r, i) { if (items[i].hasWb) items[i].cb.checked = true; }); updateCountAll(); });
+    btnGo.addEventListener('click', function () {
+      var picked = [];
+      rows.forEach(function (r, i) { if (items[i].cb.checked) picked.push(r); });
+      if (!picked.length) { selCount.textContent = '尚未勾選任何包裹'; return; }
+      var payload = b64u(JSON.stringify(picked));
+      var target = BASE + (BASE.indexOf('?') >= 0 ? '&' : '?') + 'tbimport=' + payload;
+      if (target.length > 7800) {
+        selCount.textContent = '資料過多（' + picked.length + ' 筆），請分批導入';
+        return;
+      }
+      overlay.remove();
+      statusEl.textContent = '正在跳轉到集運系統…';
+      document.body.appendChild(statusEl);
+      location.href = target;
+    });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) overlay.remove(); });
+
+    panel.appendChild(head);
+    panel.appendChild(sub);
+    panel.appendChild(list);
+    panel.appendChild(footer);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
 
   (async function () {
     try {
@@ -117,22 +221,16 @@
       var res1 = await fetchOrders(1, tk);
       if (res1.needsLogin) { setStatus('淘寶登入已過期，請重新整理訂單頁登入後再試'); return; }
       var orders = res1.orders.map(mapOrder);
-      setStatus('已取得 ' + orders.length + ' 筆訂單，正在抓取快遞單號…');
+      setStatus('已取得 ' + orders.length + ' 筆訂單，正在抓取物流單號…');
       var rows = [];
       for (var n = 0; n < orders.length; n++) {
-        setStatus('正在抓取快遞單號（' + (n + 1) + '/' + orders.length + '）…');
+        setStatus('正在抓取物流單號（' + (n + 1) + '/' + orders.length + '）…');
         var logs = [];
         try { logs = await fetchLogistics(orders[n]); } catch (e) { logs = []; }
         var waybill = (logs[0] && logs[0].expressNo) || '';
-        rows.push({ waybillNo: waybill, orderNo: orders[n].orderId, itemName: orders[n].goodsName, itemPrice: orders[n].goodsMoney, shopName: orders[n].shopName });
+        rows.push({ waybillNo: waybill, orderNo: orders[n].orderId, itemName: orders[n].goodsName, itemPrice: orders[n].goodsMoney, shopName: orders[n].shopName, existing: false });
       }
-      var payload = b64u(JSON.stringify(rows));
-      var target = BASE + (BASE.indexOf('?') >= 0 ? '&' : '?') + 'tbimport=' + payload;
-      if (target.length > 7800) {
-        setStatus('資料過多（' + rows.length + ' 筆）。請減少訂單頁一頁顯示的訂單數量後重試，或分批導入。');
-        return;
-      }
-      location.href = target;
+      showSelector(rows);
     } catch (err) {
       setStatus('發生錯誤：' + (err && err.message ? err.message : err));
     }
