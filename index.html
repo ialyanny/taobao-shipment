@@ -572,6 +572,18 @@
           <div class="dafa-login-state" id="dafaState"></div>
           <div class="dafa-result" id="dafaResult" style="display:none;"></div>
         </div>
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:8px;">淘寶訂單導入</h2>
+          <p class="hint">每位使用者用自己登入的淘寶帳號，一鍵帶入淘寶訂單與快遞單號，加入待認領清單後再認領，不用一筆一筆手 key。</p>
+          <div class="dafa-config">
+            <label>第一步：下載並安裝「淘寶導入書籤」</label>
+            <p class="hint" style="margin:2px 0 8px;">點下方按鈕下載 <b>taobao-import.html</b>（一個書籤安裝網頁），照網頁說明把書籤加入瀏覽器書籤列。</p>
+            <button type="button" class="btn-clear" id="btnTbSetup">下載淘寶導入安裝頁</button>
+            <div class="dafa-login-state" id="tbState"></div>
+          </div>
+          <p class="hint" style="margin-top:12px;"><b>使用步驟：</b>① 安裝書籤 → ② 用瀏覽器登入淘寶（www.taobao.com）→ ③ 打開「我的訂單」→ ④ 點書籤「淘寶導入」→ ⑤ 自動抓取後跳回本系統 → ⑥ 在「待認領包裹」確認認領。</p>
+          <p class="hint">導入的包裹會以淘寶訂單號作為單號加入待認領清單，品項與金額自動帶入，認領時再補上你的姓名即可。</p>
+        </div>
       </section>
 
       <section id="tab-batches" class="tab-panel" style="display:none">
@@ -2112,6 +2124,136 @@
         renderPending();
       }
 
+      function baseUrl() {
+        var p = (location.pathname || '/').replace(/[^/]*$/, '');
+        var q = location.search && location.search.indexOf('tbimport=') >= 0 ? '' : '';
+        return location.origin + p + q;
+      }
+
+      function XHR_GET_SRC(path) {
+        return new Promise(function (resolve, reject) {
+          var x = new XMLHttpRequest();
+          x.open('GET', path, true);
+          x.onload = function () {
+            if (x.status >= 200 && x.status < 300) resolve(x.responseText);
+            else reject(new Error('HTTP ' + x.status));
+          };
+          x.onerror = function () { reject(new Error('無法讀取 ' + path)); };
+          x.send();
+        });
+      }
+
+      function downloadTbBookmarklet() {
+        var st = $('tbState');
+        if (st) st.textContent = '正在產生安裝頁…';
+        var done = function (src) {
+          var base = baseUrl();
+          var filled = src.split('__BASE__').join(base);
+          var html = [
+            '<!DOCTYPE html>',
+            '<html lang="zh-Hant"><head><meta charset="utf-8">',
+            '<meta name="viewport" content="width=device-width,initial-scale=1">',
+            '<title>安裝淘寶導入書籤</title>',
+            '<style>body{font-family:sans-serif;max-width:640px;margin:40px auto;padding:0 20px;color:#222;line-height:1.8}',
+            'h1{font-size:22px}.card{border:1px solid #ddd;border-radius:10px;padding:18px 20px;margin:16px 0;background:#fafafa}',
+            '.step{background:#eef2ff;border-left:4px solid #6366f1;padding:10px 14px;border-radius:6px;margin:10px 0}',
+            '.hl{color:#d33;font-weight:700}</style></head><body>',
+            '<h1>安裝淘寶導入書籤</h1>',
+            '<p>安裝後，你在淘寶已登入的瀏覽器中，隨時可在「我的訂單」頁一鍵導入訂單到集運系統。</p>',
+            '<div class="card"><b>① 把下面這個書籤拖到瀏覽器書籤列（或按右鍵加到書籤）</b>',
+            '<p style="margin:12px 0"><a id="bm" href="javascript:' + encodeURI(filled) + '" style="display:inline-block;background:#6366f1;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600;cursor:grab">淘寶導入</a></p>',
+            '<p>如果拖曳無效，改為：按右鍵 → 加到書籤，或複製以下網址新增書籤。</p>',
+            '<p><input id="bmurl" readonly style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:11px"></p></div>',
+            '<div class="card"><b>② 使用方式</b>',
+            '<div class="step">1. 在瀏覽器登入淘寶（需要先登入淘寶帳號）</div>',
+            '<div class="step">2. 打開「我的訂單」頁（手機版訂單列表：<b>https://main.m.taobao.com/olist/index.html?tabCode=all</b>）</div>',
+            '<div class="step">3. 點書籤列上的「淘寶導入」</div>',
+            '<div class="step">4. 自動抓取後會跳回集運系統，導入的包裹會出現在「待認領包裹」</div></div>',
+            '<div class="card" style="background:#fff7ed;border-left:4px solid #f59e0b"><b>注意</b>',
+            '<ul style="margin:8px 0 4px;padding-left:20px">',
+            '<li>只支援仍顯示的訂單（抓目前訂單頁的訂單）。</li>',
+            '<li>訂單需已產生快遞單號（賣家已發貨）才會帶入。</li>',
+            '<li>導入的包裹單號用淘寶訂單號，認領時補上姓名即可。</li>',
+            '<li>如訂單頁尚未登入或登入過期，會顯示提示。</li></ul></div>',
+            '<script>var a=document.getElementById(\'bm\');var i=document.getElementById(\'bmurl\');i.value=a.href;i.addEventListener(\'click\',function(){i.select();document.execCommand(\'copy\');});</scr' + 'ipt>',
+            '</body></html>'
+          ].join('\n');
+          var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'taobao-import.html';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+          if (st) st.textContent = '已產生 taobao-import.html，請開啟後依說明安裝書籤';
+        };
+        var fail = function (err) {
+          if (st) st.textContent = '失敗：' + (err && err.message ? err.message : err);
+          showToast('產生淘寶導入安裝頁失敗');
+        };
+        if (typeof XHR_GET_SRC === 'function') {
+          XHR_GET_SRC('tb-bookmarklet.js').then(done, fail);
+        } else {
+          fetch('tb-bookmarklet.js', { cache: 'no-store' }).then(function (r) {
+            if (!r.ok) throw new Error('找不到 tb-bookmarklet.js（HTTP ' + r.status + '）');
+            return r.text();
+          }).then(done, fail);
+        }
+      }
+
+      function readTbImportParam() {
+        try {
+          var q = location.search || '';
+          var m = q.match(/[?&]tbimport=([^&]+)/);
+          if (!m) return null;
+          var b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+          while (b64.length % 4) b64 += '=';
+          var raw = decodeURIComponent(escape(atob(b64)));
+          var list = JSON.parse(raw);
+          if (!Array.isArray(list)) return null;
+          return list;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function importTbOrders(list) {
+        if (!list || !list.length) return;
+        var existing = {};
+        records.forEach(function (r) { existing[r.orderNo] = true; });
+        var added = 0;
+        list.forEach(function (p) {
+          var orderNo = String(p.orderNo || p.waybillNo || '').trim();
+          if (!orderNo || existing[orderNo]) return;
+          var rec = {
+            id: 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            time: Date.now(),
+            name: '',
+            orderNo: orderNo,
+            item: p.itemName || '',
+            amount: p.itemPrice != null ? String(p.itemPrice) : '',
+            batchId: null,
+            arrived: false,
+            weight: null,
+            arrivedDate: null,
+            remark: p.shopName ? ('淘寶導入：' + p.shopName) : '淘寶導入'
+          };
+          records.push(rec);
+          if (sb) persist(sb.from('records').insert([recRow(rec)]), '同步失敗：導入淘寶訂單');
+          existing[orderNo] = true;
+          added++;
+        });
+        cacheSave();
+        renderAll();
+        if (added) {
+          showToast('已從淘寶導入 ' + added + ' 筆包裹，請到「待認領包裹」認領');
+          switchTab('pending');
+        } else {
+          showToast('這些淘寶訂單都已存在系統中');
+        }
+      }
+
       function init() {
         document.querySelectorAll('.tab-btn').forEach(function (b) {
           b.addEventListener('click', function () { switchTab(b.dataset.tab); });
@@ -2197,6 +2339,9 @@
         var btnDafaSync = $('btnDafaSync');
         if (btnDafaSync) btnDafaSync.addEventListener('click', syncDafa);
 
+        var btnTbSetup = $('btnTbSetup');
+        if (btnTbSetup) btnTbSetup.addEventListener('click', downloadTbBookmarklet);
+
         var lbClose = $('lbClose');
         if (lbClose) lbClose.addEventListener('click', closeLightbox);
         $('imgLightbox').addEventListener('click', function (e) {
@@ -2279,6 +2424,11 @@
         if (c && typeof c.notice === 'string') noticeText = c.notice;
         renderAll();
         renderUserBar();
+
+        var tbList = readTbImportParam();
+        if (tbList) {
+          setTimeout(function () { importTbOrders(tbList); }, 400);
+        }
 
         if (currentUser) {
           startApp();
