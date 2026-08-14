@@ -581,8 +581,8 @@
             <button type="button" class="btn-clear" id="btnTbSetup">下載淘寶導入安裝頁</button>
             <div class="dafa-login-state" id="tbState"></div>
           </div>
-          <p class="hint" style="margin-top:12px;"><b>使用步驟：</b>① 安裝書籤 → ② 用瀏覽器登入淘寶（www.taobao.com）→ ③ 打開「我的訂單」→ ④ 點書籤「淘寶導入」→ ⑤ 勾選要導入的包裹（已申報過的就不要勾）→ ⑥ 跳回本系統後在「待認領包裹」認領。</p>
-          <p class="hint">導入以<b>物流單號</b>為單號，品項與金額自動帶入；已存在系統中的物流單號會自動跳過。未產生物流單號（賣家還沒發貨）的訂單不會被帶入。</p>
+          <p class="hint" style="margin-top:12px;"><b>使用步驟：</b>① 安裝書籤 → ② 用瀏覽器登入淘寶（www.taobao.com）→ ③ 打開「我的訂單」→ ④ 點書籤「淘寶導入」→ ⑤ 勾選要導入的包裹（已申報過的就不要勾）→ ⑥ 跳回本系統後，會自動加到你個人的包裹列表。</p>
+          <p class="hint">導入以<b>物流單號</b>為單號，<b>品項</b>（前 10 個字）與<b>金額</b>自動帶入，並直接掛在登入者名下；已存在系統中的物流單號會自動跳過。未產生物流單號（賣家還沒發貨）的訂單不會被帶入。</p>
         </div>
       </section>
 
@@ -2220,6 +2220,11 @@
 
       function importTbOrders(list) {
         if (!list || !list.length) return;
+        var userName = currentUser ? currentUser.name : '';
+        if (!userName) {
+          showToast('請先登入後再導入淘寶包裹');
+          return;
+        }
         var existing = {};
         records.forEach(function (r) { existing[r.orderNo] = true; });
         var added = 0, skipped = 0, noWb = 0;
@@ -2230,9 +2235,9 @@
           var rec = {
             id: 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             time: Date.now(),
-            name: '',
+            name: userName,
             orderNo: waybillNo,
-            item: p.itemName || '',
+            item: String(p.itemName || '').slice(0, 10),
             amount: p.itemPrice != null ? String(p.itemPrice) : '',
             batchId: null,
             arrived: false,
@@ -2248,7 +2253,7 @@
         cacheSave();
         renderAll();
         if (added) {
-          var msg = '已導入 ' + added + ' 筆包裹（以物流單號），請到「待認領包裹」認領';
+          var msg = '已導入 ' + added + ' 筆包裹到你的包裹列表';
           if (skipped) msg += '；跳過 ' + skipped + ' 筆系統已有';
           if (noWb) msg += '；' + noWb + ' 筆無物流單號未帶入';
           showToast(msg);
