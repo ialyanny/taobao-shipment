@@ -10,7 +10,7 @@
 為家庭集運打造單頁系統（`index.html`，PWA），串接大發集運（df.omszt.com）：
 - 每人登入後登錄自己的包裹（單號/品項/金額），管理員可建立集運批次、核對到貨
 - **大發同步**：一鍵把大發倉庫包裹資料（重量/到貨/備註/照片）拉進來；把確認的包裹推成預報
-- **淘寶訂單導入**：每位使用者用自己的淘寶帳號，用 bookmarklet 一鍵帶入物流單號/品項/金額，直接掛到自己名下
+- ~~**淘寶訂單導入**~~：曾用 bookmarklet 一鍵帶入物流單號/品項/金額（2026-08-15 依使用者要求**全部移除**，申報恢復單一表單）
 
 ## 已完成 ✅
 
@@ -19,23 +19,24 @@
 - [x] 大發照片同步（`queryImages`，縮圖＋燈箱）→ `066cb0e`
 - [x] 大發備註欄（客户备注）導入、管理員可編輯待認領備註 → `aa95f43`
 - [x] PWA（manifest/icons/app shell/更新提示）→ `8986f18`
-- [x] 淘寶導入 bookmarklet v1（個人淘寶登入、帶入待認領）→ `537d100`
-- [x] 淘寶導入改用**物流單號**＋**勾選清單**（可勾選要載入哪幾筆、自動跳過已存在）→ `63ba493`
-- [x] 淘寶導入直接掛到**登入者名下**、品項截**前 10 字**、金額自動帶入（不再走待認領）→ `700fe57`
+- [x] 淘寶導入 bookmarklet v1（個人淘寶登入、帶入待認領）→ `537d100` → **已移除** `47fe982`
+- [x] 淘寶導入改用**物流單號**＋**勾選清單**（可勾選要載入哪幾筆、自動跳過已存在）→ `63ba493` → **已移除** `47fe982`
+- [x] 淘寶導入直接掛到**登入者名下**、品項截**前 10 字**、金額自動帶入（不再走待認領）→ `700fe57` → **已移除** `47fe982`
 
 ## 待辦 🚧
 
 - [ ] （新 session 持續開發的起點，見 handoff.md）
-- [ ] 待認領清單中「采蕨」包裹（真實淘寶導入測試留下）確認是否保留
+- [ ] 「采蕨」包裹確認：2026-08-15 查 Supabase records（order_no/name/item/remark）皆無此資料，應已不在系統；若大發倉庫端仍有測試包裹，下次 syncDafa 可能再被推播進待認領，屆時再處理
+- [ ] RDQ 規格卡 `rdq/RDQ-spec-mobile-tb-import-20260815.md` 已 confirmed，但功能隨後全部移除（決策紀錄，供參考不執行）
 
 ## 資料夾結構
 
-- `index.html`：主系統（單檔 PWA，約 2400+ 行，含淘寶導入卡片與 `importTbOrders`）
-- `tb-bookmarklet.js`：淘寶導入 bookmarklet（`__BASE__` 由下載頁填入目前站台網址）；含 `showSelector` 勾選 UI
-- `sw.js`：Service Worker（v4，APP_SHELL 含 tb-bookmarklet.js）
+- `index.html`：主系統（單檔 PWA，約 2300+ 行；包裹申報為單一表單，無淘寶導入）
+- `sw.js`：Service Worker（v6，APP_SHELL 不含 bookmarklet）
 - `manifest.webmanifest` / `icon-192.png` / `icon-512.png` / `apple-touch-icon.png`：PWA 檔案
 - `code.gs` / `supabase-*.sql`：AppScript 與 Supabase 遷移腳本
 - `count_records.ps1`：單號統計腳本
+- `rdq/`：RDQ 需求規格卡（決策紀錄）
 
 ## 關鍵架構資訊
 
@@ -49,6 +50,7 @@
 
 - 勿提交 `dafa_packages_20260812.xlsx`、`sensebar-agent-knowledge-vault-builder/`
 - file:// 下 fetch/XHR 受 CORS 限制無法導入（測試用 http.server 或 GitHub Pages https 即可）
-- bookmarklet 面板無法跨域查系統已有單號，已移除誤導標記；去重靠系統端 `importTbOrders` 跳過
 - 大發第三方導入需桌面端「集運助手」，無法純 API 繞過（需使用者淘寶登入 session）
+- 淘寶導入已全部移除；iOS Safari／Android Chrome 皆封鎖 `javascript:` 書籤與網址列（實測確認），手機自動帶入淘寶訂單不可行
+- GitHub Pages 部署更新偶發延遲（CDN 快取）；可用 gh-pages 分支空 commit（`git commit --allow-empty -m "chore: trigger pages rebuild"`）觸發重新發布
 - Obsidian vault：`D:\ObsidianVault`（目前僅 welcome.md；L3 筆記待建立）
