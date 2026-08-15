@@ -496,6 +496,16 @@
               <button type="button" class="btn-clear" id="btnClear">清除表單</button>
             </div>
           </form>
+          <div style="margin-top:18px;padding-top:16px;border-top:1px dashed var(--border);">
+            <div style="font-size:15px;font-weight:600;margin-bottom:6px;">手機快速導入：貼上物流單號</div>
+            <p class="hint" style="margin:0 0 8px;">在淘寶 App 訂單頁複製物流單號，多筆時<b>每行一個</b>，貼到下方按「建立包裹」。單號會掛在你的名下，已存在的會自動跳過，品項與金額之後再補。</p>
+            <textarea id="bulkOrderNos" rows="3" placeholder="一行一個物流單號&#10;YT7634938001060&#10;773433868685447" style="width:100%;box-sizing:border-box;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:15px;"></textarea>
+            <div class="btn-row" style="margin-top:8px;">
+              <button type="button" class="btn-green" id="btnBulkAdd">建立包裹</button>
+              <button type="button" class="btn-clear" id="btnBulkClear">清除</button>
+            </div>
+            <div class="error" id="bulkError"></div>
+          </div>
         </div>
         <div class="card" id="pendingCard" style="display:none">
           <h2 style="font-size:20px;margin-bottom:8px;">待認領包裹 <span id="pendingCount" class="badge badge-pending-claim">0</span></h2>
@@ -574,7 +584,7 @@
         </div>
         <div class="card">
           <h2 style="font-size:20px;margin-bottom:8px;">淘寶訂單導入</h2>
-          <p class="hint">每位使用者用自己登入的淘寶帳號，一鍵帶入淘寶訂單的<b>物流單號</b>，加入待認領清單後再認領，不用一筆一筆手 key。</p>
+          <p class="hint">每位使用者用自己登入的淘寶帳號，一鍵帶入淘寶訂單的<b>物流單號</b>，直接加到自己的包裹列表，不用一筆一筆手 key。</p>
           <div class="dafa-config">
             <label>第一步：下載並安裝「淘寶導入書籤」</label>
             <p class="hint" style="margin:2px 0 8px;">點下方按鈕下載 <b>taobao-import.html</b>（一個書籤安裝網頁），照網頁說明把書籤加入瀏覽器書籤列。</p>
@@ -583,6 +593,19 @@
           </div>
           <p class="hint" style="margin-top:12px;"><b>使用步驟：</b>① 安裝書籤 → ② 用瀏覽器登入淘寶（www.taobao.com）→ ③ 打開「我的訂單」→ ④ 點書籤「淘寶導入」→ ⑤ 勾選要導入的包裹（已申報過的就不要勾）→ ⑥ 跳回本系統後，會自動加到你個人的包裹列表。</p>
           <p class="hint">導入以<b>物流單號</b>為單號，<b>品項</b>（前 10 個字）與<b>金額</b>自動帶入，並直接掛在登入者名下；已存在系統中的物流單號會自動跳過。未產生物流單號（賣家還沒發貨）的訂單不會被帶入。</p>
+          <div style="margin-top:14px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+            <div style="font-size:14px;font-weight:600;color:#166534;margin-bottom:6px;">手機怎麼用？</div>
+            <p class="hint" style="margin:0 0 6px;"><b>方法一（推薦・最簡單）：</b>在淘寶 App 訂單頁複製物流單號，回「登錄新包裹」卡片的<b>手機快速導入</b>欄位，每行一個貼上後按「建立包裹」即可，品項與金額之後再補。</p>
+            <p class="hint" style="margin:0;"><b>方法二（Android 自動帶入）：</b>手機裝 <b>Firefox</b> 瀏覽器，用下方「手機導入碼」自動抓取訂單；iPhone 的 Safari 不支援此方式。</p>
+          </div>
+          <div style="margin-top:10px;padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
+            <div style="font-size:14px;font-weight:600;color:#92400e;margin-bottom:6px;">Android 手機導入碼</div>
+            <p class="hint" style="margin:0 0 6px;">① Play 商店安裝 Firefox → ② 用 Firefox 登入淘寶並打開「我的訂單」頁（https://main.m.taobao.com/olist/index.html?tabCode=all）→ ③ 長按網址列「貼上」下方導入碼後前往 → ④ 自動抓取並跳回本系統導入（品項金額自動帶入）。</p>
+            <input type="text" id="tbMobileCode" readonly style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #fde68a;border-radius:6px;font-size:11px;background:#fff;" value="javascript:(function(){var s=document.createElement('script');s.src='https://ialyanny.github.io/taobao-shipment/tb-import-mobile.js';document.head.appendChild(s);})()">
+            <div class="btn-row" style="margin-top:8px;">
+              <button type="button" class="btn-clear" id="btnTbMobileCopy">複製導入碼</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -2263,6 +2286,60 @@
         }
       }
 
+      function bulkAddFromPaste() {
+        var err = $('bulkError');
+        if (err) err.textContent = '';
+        var el = $('bulkOrderNos');
+        var lines = el.value.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+        if (!lines.length) {
+          if (err) err.textContent = '請先貼上物流單號';
+          return;
+        }
+        var userName = currentUser ? currentUser.name : '';
+        if (!userName) {
+          if (err) err.textContent = '請先登入後再建立包裹';
+          return;
+        }
+        var existing = {};
+        records.forEach(function (r) { existing[r.orderNo] = true; });
+        var added = 0, skipped = 0;
+        lines.forEach(function (no) {
+          if (existing[no]) { skipped++; return; }
+          var rec = {
+            id: 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            time: Date.now(),
+            name: userName,
+            orderNo: no,
+            item: '',
+            amount: '',
+            batchId: null,
+            arrived: false
+          };
+          records.push(rec);
+          if (sb) persist(sb.from('records').insert([recRow(rec)]), '同步失敗：新增包裹');
+          existing[no] = true;
+          added++;
+        });
+        cacheSave();
+        renderAll();
+        el.value = '';
+        var msg = '已建立 ' + added + ' 筆包裹';
+        if (skipped) msg += '；跳過 ' + skipped + ' 筆已存在';
+        showToast(msg);
+      }
+
+      function copyTbMobileCode() {
+        var el = $('tbMobileCode');
+        if (!el) return;
+        el.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(el.value);
+        }
+        showToast('已複製手機導入碼，貼到 Firefox 網址列即可');
+      }
+
       function init() {
         document.querySelectorAll('.tab-btn').forEach(function (b) {
           b.addEventListener('click', function () { switchTab(b.dataset.tab); });
@@ -2308,6 +2385,15 @@
           $('registerForm').reset();
           $('formError').textContent = '';
         });
+
+        $('btnBulkAdd').addEventListener('click', bulkAddFromPaste);
+        $('btnBulkClear').addEventListener('click', function () {
+          $('bulkOrderNos').value = '';
+          $('bulkError').textContent = '';
+        });
+
+        var btnTbMobileCopy = $('btnTbMobileCopy');
+        if (btnTbMobileCopy) btnTbMobileCopy.addEventListener('click', copyTbMobileCode);
 
         $('btnCreateBatch').addEventListener('click', createBatchFromSelected);
 
