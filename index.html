@@ -496,6 +496,16 @@
               <button type="button" class="btn-clear" id="btnClear">清除表單</button>
             </div>
           </form>
+          <div id="bulkImportBox" style="margin-top:18px;padding-top:16px;border-top:1px dashed var(--border);">
+            <div style="font-size:15px;font-weight:600;margin-bottom:6px;">手機快速導入：貼上物流單號</div>
+            <p class="hint" style="margin:0 0 8px;">在淘寶 App 訂單頁複製物流單號，多筆時<b>每行一個</b>，貼到下方按「建立包裹」。單號會掛在你的名下，已存在的會自動跳過，品項與金額之後再補。</p>
+            <textarea id="bulkOrderNos" rows="3" placeholder="一行一個物流單號&#10;YT7634938001060&#10;773433868685447" style="width:100%;box-sizing:border-box;resize:vertical;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:15px;"></textarea>
+            <div class="btn-row" style="margin-top:8px;">
+              <button type="button" class="btn-green" id="btnBulkAdd">建立包裹</button>
+              <button type="button" class="btn-clear" id="btnBulkClear">清除</button>
+            </div>
+            <div class="error" id="bulkError"></div>
+          </div>
         </div>
         <div class="card" id="pendingCard" style="display:none">
           <h2 style="font-size:20px;margin-bottom:8px;">待認領包裹 <span id="pendingCount" class="badge badge-pending-claim">0</span></h2>
@@ -571,6 +581,31 @@
           </div>
           <div class="dafa-login-state" id="dafaState"></div>
           <div class="dafa-result" id="dafaResult" style="display:none;"></div>
+        </div>
+        <div class="card" id="tbImportCard">
+          <h2 style="font-size:20px;margin-bottom:8px;">淘寶訂單導入</h2>
+          <p class="hint">每位使用者用自己登入的淘寶帳號，一鍵帶入淘寶訂單的<b>物流單號</b>，直接加到自己的包裹列表，不用一筆一筆手 key。</p>
+          <div class="dafa-config">
+            <label>第一步：下載並安裝「淘寶導入書籤」</label>
+            <p class="hint" style="margin:2px 0 8px;">點下方按鈕下載 <b>taobao-import.html</b>（一個書籤安裝網頁），照網頁說明把書籤加入瀏覽器書籤列。</p>
+            <button type="button" class="btn-clear" id="btnTbSetup">下載淘寶導入安裝頁</button>
+            <div class="dafa-login-state" id="tbState"></div>
+          </div>
+          <p class="hint" style="margin-top:12px;"><b>使用步驟：</b>① 安裝書籤 → ② 用瀏覽器登入淘寶（www.taobao.com）→ ③ 打開「我的訂單」→ ④ 點書籤「淘寶導入」→ ⑤ 勾選要導入的包裹（已申報過的就不要勾）→ ⑥ 跳回本系統後，會自動加到你個人的包裹列表。</p>
+          <p class="hint">導入以<b>物流單號</b>為單號，<b>品項</b>（前 10 個字）與<b>金額</b>自動帶入，並直接掛在登入者名下；已存在系統中的物流單號會自動跳過。未產生物流單號（賣家還沒發貨）的訂單不會被帶入。</p>
+          <div style="margin-top:14px;padding:12px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+            <div style="font-size:14px;font-weight:600;color:#166534;margin-bottom:6px;">手機怎麼用？</div>
+            <p class="hint" style="margin:0 0 6px;"><b>方法一（推薦・最簡單）：</b>在淘寶 App 訂單頁複製物流單號，回「登錄新包裹」卡片的<b>手機快速導入</b>欄位，每行一個貼上後按「建立包裹」即可，品項與金額之後再補。</p>
+            <p class="hint" style="margin:0;"><b>方法二（Android 自動帶入）：</b>手機裝 <b>Firefox</b> 瀏覽器，用下方「手機導入碼」自動抓取訂單；iPhone 的 Safari 不支援此方式。</p>
+          </div>
+          <div style="margin-top:10px;padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
+            <div style="font-size:14px;font-weight:600;color:#92400e;margin-bottom:6px;">Android 手機導入碼</div>
+            <p class="hint" style="margin:0 0 6px;">① Play 商店安裝 Firefox → ② 用 Firefox 登入淘寶並打開「我的訂單」頁（https://main.m.taobao.com/olist/index.html?tabCode=all）→ ③ 長按網址列「貼上」下方導入碼後前往 → ④ 自動抓取並跳回本系統導入（品項金額自動帶入）。</p>
+            <input type="text" id="tbMobileCode" readonly style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #fde68a;border-radius:6px;font-size:11px;background:#fff;" value="javascript:(function(){var s=document.createElement('script');s.src='https://ialyanny.github.io/taobao-shipment/tb-import-mobile.js';document.head.appendChild(s);})()">
+            <div class="btn-row" style="margin-top:8px;">
+              <button type="button" class="btn-clear" id="btnTbMobileCopy">複製導入碼</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -684,11 +719,12 @@
 
       function recRow(r) {
         var row = { id: r.id, time: r.time, name: r.name, order_no: r.orderNo, item: r.item, amount: r.amount, batch_id: r.batchId, arrived: !!r.arrived, weight: r.weight != null ? r.weight : null, arrived_date: r.arrivedDate != null ? r.arrivedDate : null, remark: r.remark != null ? r.remark : null };
+        if (r.arrivedAt != null) row.arrived_at = r.arrivedAt;
         if (r.packageImages && r.packageImages.length) row.package_images = JSON.stringify(r.packageImages);
         return row;
       }
       function recFrom(row) {
-        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived, weight: row.weight != null ? row.weight : null, arrivedDate: row.arrived_date != null ? row.arrived_date : null, remark: row.remark != null ? row.remark : null, packageImages: row.package_images ? parseImageList(row.package_images) : null };
+        return { id: row.id, time: row.time, name: row.name, orderNo: row.order_no, item: row.item, amount: row.amount, batchId: row.batch_id, arrived: !!row.arrived, weight: row.weight != null ? row.weight : null, arrivedDate: row.arrived_date != null ? row.arrived_date : null, arrivedAt: row.arrived_at != null ? row.arrived_at : null, remark: row.remark != null ? row.remark : null, packageImages: row.package_images ? parseImageList(row.package_images) : null };
       }
       function parseImageList(v) {
         if (Array.isArray(v)) return v.slice();
@@ -953,6 +989,8 @@
         $('btnCreateBatch').style.display = isAdmin() ? '' : 'none';
         $('selectedSummary').style.display = isAdmin() ? '' : 'none';
         $('batchHint').style.display = isAdmin() ? '' : 'none';
+        if ($('bulkImportBox')) $('bulkImportBox').style.display = isAdmin() ? '' : 'none';
+        if ($('tbImportCard')) $('tbImportCard').style.display = isAdmin() ? '' : 'none';
       }
 
       function showToast(msg) {
@@ -1259,7 +1297,13 @@
           }
           var tdStatus = document.createElement('td');
           var badge = document.createElement('span');
-          if (r.batchId == null) {
+          if (r.arrived) {
+            badge.className = 'status-badge';
+            badge.style.background = '#e6f4ea';
+            badge.style.color = 'var(--green)';
+            var d = r.arrivedAt ? fmtTime(r.arrivedAt).slice(0, 10) : (r.arrivedDate ? fmtTime(r.arrivedDate).slice(0, 10) : '');
+            badge.textContent = d ? '已到貨 ' + d : '已到貨';
+          } else if (r.batchId == null) {
             badge.className = 'status-badge st-pending';
             badge.textContent = '待集運';
           } else {
@@ -1359,6 +1403,7 @@
           + '<button type="button" class="btn-sm btn-green" data-act="print">列印核對單</button>'
           + '<button type="button" class="btn-sm" data-act="csv">匯出 CSV</button>'
           + '<button type="button" class="btn-sm" data-act="arrived">全數到貨</button>'
+          + '<button type="button" class="btn-sm btn-danger" data-act="deleteArrived">刪除已到貨包裹</button>'
           + '<button type="button" class="btn-sm btn-danger" data-act="undo">退回未集運</button>'
           + '</div>'
           + '</div>';
@@ -1375,7 +1420,7 @@
               + '<span class="row-order">' + esc(r.orderNo) + '</span>'
               + '<span class="row-item">' + esc(r.item) + '</span>'
               + '<span class="row-amount">¥' + esc(r.amount) + '</span>'
-              + '<span class="row-mark">' + (r.arrived ? '✓ 已到貨' : '') + '</span>'
+              + '<span class="row-mark">' + (r.arrived ? '✓ 已到貨' + (r.arrivedAt ? ' ' + fmtTime(r.arrivedAt).slice(0,10) : (r.arrivedDate ? ' ' + fmtTime(r.arrivedDate).slice(0,10) : '')) : '') + '</span>'
               + '</label>';
           });
         });
@@ -1397,7 +1442,13 @@
             var r = findRec(cb.dataset.id);
             if (!r) return;
             r.arrived = cb.checked;
-            persist(sb.from('records').update({ arrived: r.arrived }).eq('id', r.id), '同步失敗：到貨狀態');
+            if (cb.checked) {
+              r.arrivedAt = Date.now();
+              persist(sb.from('records').update({ arrived: true, arrived_at: r.arrivedAt }).eq('id', r.id), '同步失敗：到貨狀態');
+            } else {
+              r.arrivedAt = null;
+              persist(sb.from('records').update({ arrived: false, arrived_at: null }).eq('id', r.id), '同步失敗：到貨狀態');
+            }
             cacheSave();
             renderAll();
           });
@@ -1408,11 +1459,31 @@
             if (act === 'print') { printBatch(b.id); }
             else if (act === 'csv') { exportBatchCSV(b.id); }
             else if (act === 'arrived') {
-              var ids = recs.map(function (r) { r.arrived = true; return r.id; });
-              persist(sb.from('records').update({ arrived: true }).in('id', ids), '同步失敗：全數到貨');
+              var now = Date.now();
+              var ids = recs.map(function (r) { r.arrived = true; r.arrivedAt = now; return r.id; });
+              if (!ids.length) { showToast('批次沒有包裹'); return; }
+              persist(sb.from('records').update({ arrived: true, arrived_at: now }).in('id', ids), '同步失敗：全數到貨');
               cacheSave();
               renderAll();
-              showToast('已將 ' + b.name + ' 全部標記為到貨');
+              showToast('已將 ' + b.name + ' 全部標記為到貨（' + fmtTime(now) + '）');
+            }
+            else if (act === 'deleteArrived') {
+              var arrivedRecs = recs.filter(function (r) { return r.arrived; });
+              if (!arrivedRecs.length) { showToast('沒有已到貨包裹可刪除'); return; }
+              if (!confirm('確定刪除「' + b.name + '」中已到貨的 ' + arrivedRecs.length + ' 筆包裹？此操作無法撤銷。')) return;
+              var delIds = arrivedRecs.map(function (r) { return r.id; });
+              delIds.forEach(function (delId) {
+                persist(sb.from('records').delete().eq('id', delId), '同步失敗：刪除已到貨包裹');
+              });
+              records = records.filter(function (r) { return delIds.indexOf(r.id) === -1; });
+              var remaining = records.some(function (r) { return r.batchId === b.id; });
+              if (!remaining) {
+                batches = batches.filter(function (x) { return x.id !== b.id; });
+                persist(sb.from('batches').delete().eq('id', b.id), '同步失敗：刪除空批次');
+              }
+              cacheSave();
+              renderAll();
+              showToast('已刪除已到貨包裹 ' + delIds.length + ' 筆');
             }
             else if (act === 'undo') { undoBatch(b.id); }
             else if (act === 'add') {
@@ -1420,8 +1491,8 @@
               if (!sel.value) { showToast('請先選擇要加入的包裹'); return; }
               var r = findRec(sel.value);
               if (r) {
-                r.batchId = b.id; r.arrived = false;
-                persist(sb.from('records').update({ batch_id: b.id, arrived: false }).eq('id', r.id), '同步失敗：加入批次');
+                r.batchId = b.id; r.arrived = false; r.arrivedAt = null;
+                persist(sb.from('records').update({ batch_id: b.id, arrived: false, arrived_at: null }).eq('id', r.id), '同步失敗：加入批次');
                 cacheSave(); renderAll(); showToast('已加入批次');
               }
             }
@@ -1435,11 +1506,11 @@
         if (!b) return;
         if (!confirm('將「' + b.name + '」的包裹全部退回「待集運」並刪除該批次？')) return;
         var ids = [];
-        visibleRecords().forEach(function (r) { if (r.batchId === bid) { ids.push(r.id); r.batchId = null; r.arrived = false; } });
+        records.forEach(function (r) { if (r.batchId === bid) { ids.push(r.id); r.batchId = null; r.arrived = false; r.arrivedAt = null; } });
         batches = batches.filter(function (x) { return x.id !== bid; });
         persist(sb.from('batches').delete().eq('id', bid), '同步失敗：刪除批次');
         if (ids.length) {
-          persist(sb.from('records').update({ batch_id: null, arrived: false }).in('id', ids), '同步失敗：退回未集運');
+          persist(sb.from('records').update({ batch_id: null, arrived: false, arrived_at: null }).in('id', ids), '同步失敗：退回未集運');
         }
         cacheSave();
         renderAll();
@@ -1490,9 +1561,13 @@
         recs.forEach(function (r) {
           rows.push([fmtTime(r.time), r.name, r.orderNo, r.item, r.amount, r.arrived ? '是' : '否']);
         });
-        var csv = rows.map(function (row) {
-          return row.map(function (cell) {
-            return '"' + String(cell).replace(/"/g, '""') + '"';
+        var csv = rows.map(function (row, rowIdx) {
+          return row.map(function (cell, colIdx) {
+            var v = String(cell);
+            if (rowIdx > 0 && colIdx === 2) {
+              v = '="' + v + '"';
+            }
+            return '"' + v.replace(/"/g, '""') + '"';
           }).join(',');
         }).join('\r\n');
         var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1521,10 +1596,10 @@
         };
         batches.push(batch);
         records.forEach(function (r) {
-          if (eligible.indexOf(r.id) !== -1) { r.batchId = batch.id; r.arrived = false; }
+          if (eligible.indexOf(r.id) !== -1) { r.batchId = batch.id; r.arrived = false; r.arrivedAt = null; }
         });
         persist(sb.from('batches').insert([batchRow(batch)]), '同步失敗：建立批次');
-        persist(sb.from('records').update({ batch_id: batch.id, arrived: false }).in('id', eligible), '同步失敗：更新包裹');
+        persist(sb.from('records').update({ batch_id: batch.id, arrived: false, arrived_at: null }).in('id', eligible), '同步失敗：更新包裹');
         selected = {};
         cacheSave();
         renderAll();
@@ -2114,7 +2189,203 @@
 
       function baseUrl() {
         var p = (location.pathname || '/').replace(/[^/]*$/, '');
-        return location.origin + p;
+        var q = location.search && location.search.indexOf('tbimport=') >= 0 ? '' : '';
+        return location.origin + p + q;
+      }
+
+      function XHR_GET_SRC(path) {
+        return new Promise(function (resolve, reject) {
+          var x = new XMLHttpRequest();
+          x.open('GET', path, true);
+          x.onload = function () {
+            if (x.status >= 200 && x.status < 300) resolve(x.responseText);
+            else reject(new Error('HTTP ' + x.status));
+          };
+          x.onerror = function () { reject(new Error('無法讀取 ' + path)); };
+          x.send();
+        });
+      }
+
+      function downloadTbBookmarklet() {
+        var st = $('tbState');
+        if (st) st.textContent = '正在產生安裝頁…';
+        var done = function (src) {
+          var base = baseUrl();
+          var filled = src.split('__BASE__').join(base);
+          var html = [
+            '<!DOCTYPE html>',
+            '<html lang="zh-Hant"><head><meta charset="utf-8">',
+            '<meta name="viewport" content="width=device-width,initial-scale=1">',
+            '<title>安裝淘寶導入書籤</title>',
+            '<style>body{font-family:sans-serif;max-width:640px;margin:40px auto;padding:0 20px;color:#222;line-height:1.8}',
+            'h1{font-size:22px}.card{border:1px solid #ddd;border-radius:10px;padding:18px 20px;margin:16px 0;background:#fafafa}',
+            '.step{background:#eef2ff;border-left:4px solid #6366f1;padding:10px 14px;border-radius:6px;margin:10px 0}',
+            '.hl{color:#d33;font-weight:700}</style></head><body>',
+            '<h1>安裝淘寶導入書籤</h1>',
+            '<p>安裝後，你在淘寶已登入的瀏覽器中，隨時可在「我的訂單」頁一鍵導入訂單到集運系統。</p>',
+            '<div class="card"><b>① 把下面這個書籤拖到瀏覽器書籤列（或按右鍵加到書籤）</b>',
+            '<p style="margin:12px 0"><a id="bm" href="javascript:' + encodeURI(filled) + '" style="display:inline-block;background:#6366f1;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:600;cursor:grab">淘寶導入</a></p>',
+            '<p>如果拖曳無效，改為：按右鍵 → 加到書籤，或複製以下網址新增書籤。</p>',
+            '<p><input id="bmurl" readonly style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:11px"></p></div>',
+            '<div class="card"><b>② 使用方式</b>',
+            '<div class="step">1. 在瀏覽器登入淘寶（需要先登入淘寶帳號）</div>',
+            '<div class="step">2. 打開「我的訂單」頁（手機版訂單列表：<b>https://main.m.taobao.com/olist/index.html?tabCode=all</b>）</div>',
+            '<div class="step">3. 點書籤列上的「淘寶導入」</div>',
+            '<div class="step">4. 自動抓取後會跳回集運系統，導入的包裹會出現在「待認領包裹」</div></div>',
+            '<div class="card" style="background:#fff7ed;border-left:4px solid #f59e0b"><b>注意</b>',
+            '<ul style="margin:8px 0 4px;padding-left:20px">',
+            '<li>只支援仍顯示的訂單（抓目前訂單頁的訂單）。</li>',
+            '<li>訂單需已產生快遞單號（賣家已發貨）才會帶入。</li>',
+            '<li>導入的包裹單號用淘寶訂單號，認領時補上姓名即可。</li>',
+            '<li>如訂單頁尚未登入或登入過期，會顯示提示。</li></ul></div>',
+            '<script>var a=document.getElementById(\'bm\');var i=document.getElementById(\'bmurl\');i.value=a.href;i.addEventListener(\'click\',function(){i.select();document.execCommand(\'copy\');});</scr' + 'ipt>',
+            '</body></html>'
+          ].join('\n');
+          var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'taobao-import.html';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+          if (st) st.textContent = '已產生 taobao-import.html，請開啟後依說明安裝書籤';
+        };
+        var fail = function (err) {
+          if (st) st.textContent = '失敗：' + (err && err.message ? err.message : err);
+          showToast('產生淘寶導入安裝頁失敗');
+        };
+        if (typeof XHR_GET_SRC === 'function') {
+          XHR_GET_SRC('tb-bookmarklet.js').then(done, fail);
+        } else {
+          fetch('tb-bookmarklet.js', { cache: 'no-store' }).then(function (r) {
+            if (!r.ok) throw new Error('找不到 tb-bookmarklet.js（HTTP ' + r.status + '）');
+            return r.text();
+          }).then(done, fail);
+        }
+      }
+
+      function readTbImportParam() {
+        try {
+          var q = location.search || '';
+          var m = q.match(/[?&]tbimport=([^&]+)/);
+          if (!m) return null;
+          var b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+          while (b64.length % 4) b64 += '=';
+          var raw = decodeURIComponent(escape(atob(b64)));
+          var list = JSON.parse(raw);
+          if (!Array.isArray(list)) return null;
+          return list;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function importTbOrders(list) {
+        if (!list || !list.length) return;
+        if (!isAdmin()) {
+          showToast('僅管理者可使用淘寶導入');
+          return;
+        }
+        var userName = currentUser ? currentUser.name : '';
+        if (!userName) {
+          showToast('請先登入後再導入淘寶包裹');
+          return;
+        }
+        var existing = {};
+        records.forEach(function (r) { existing[r.orderNo] = true; });
+        var added = 0, skipped = 0, noWb = 0;
+        list.forEach(function (p) {
+          var waybillNo = String(p.waybillNo || '').trim();
+          if (!waybillNo) { noWb++; return; }
+          if (existing[waybillNo]) { skipped++; return; }
+          var rec = {
+            id: 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            time: Date.now(),
+            name: userName,
+            orderNo: waybillNo,
+            item: String(p.itemName || '').slice(0, 10),
+            amount: p.itemPrice != null ? String(p.itemPrice) : '',
+            batchId: null,
+            arrived: false,
+            weight: null,
+            arrivedDate: null,
+            remark: (p.shopName ? '淘寶導入：' + p.shopName : '淘寶導入') + (p.orderNo ? '　訂單 ' + p.orderNo : '')
+          };
+          records.push(rec);
+          if (sb) persist(sb.from('records').insert([recRow(rec)]), '同步失敗：導入淘寶訂單');
+          existing[waybillNo] = true;
+          added++;
+        });
+        cacheSave();
+        renderAll();
+        if (added) {
+          var msg = '已導入 ' + added + ' 筆包裹到你的包裹列表';
+          if (skipped) msg += '；跳過 ' + skipped + ' 筆系統已有';
+          if (noWb) msg += '；' + noWb + ' 筆無物流單號未帶入';
+          showToast(msg);
+          switchTab('pending');
+        } else {
+          showToast('沒有可導入的新包裹（物流單號皆已存在或無物流單號）');
+        }
+      }
+
+      function bulkAddFromPaste() {
+        if (!isAdmin()) {
+          showToast('僅管理者可使用批量導入');
+          return;
+        }
+        var err = $('bulkError');
+        if (err) err.textContent = '';
+        var el = $('bulkOrderNos');
+        var lines = el.value.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+        if (!lines.length) {
+          if (err) err.textContent = '請先貼上物流單號';
+          return;
+        }
+        var userName = currentUser ? currentUser.name : '';
+        if (!userName) {
+          if (err) err.textContent = '請先登入後再建立包裹';
+          return;
+        }
+        var existing = {};
+        records.forEach(function (r) { existing[r.orderNo] = true; });
+        var added = 0, skipped = 0;
+        lines.forEach(function (no) {
+          if (existing[no]) { skipped++; return; }
+          var rec = {
+            id: 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            time: Date.now(),
+            name: userName,
+            orderNo: no,
+            item: '',
+            amount: '',
+            batchId: null,
+            arrived: false
+          };
+          records.push(rec);
+          if (sb) persist(sb.from('records').insert([recRow(rec)]), '同步失敗：新增包裹');
+          existing[no] = true;
+          added++;
+        });
+        cacheSave();
+        renderAll();
+        el.value = '';
+        var msg = '已建立 ' + added + ' 筆包裹';
+        if (skipped) msg += '；跳過 ' + skipped + ' 筆已存在';
+        showToast(msg);
+      }
+
+      function copyTbMobileCode() {
+        var el = $('tbMobileCode');
+        if (!el) return;
+        el.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(el.value);
+        }
+        showToast('已複製手機導入碼，貼到 Firefox 網址列即可');
       }
 
       function init() {
@@ -2163,6 +2434,15 @@
           $('formError').textContent = '';
         });
 
+        $('btnBulkAdd').addEventListener('click', bulkAddFromPaste);
+        $('btnBulkClear').addEventListener('click', function () {
+          $('bulkOrderNos').value = '';
+          $('bulkError').textContent = '';
+        });
+
+        var btnTbMobileCopy = $('btnTbMobileCopy');
+        if (btnTbMobileCopy) btnTbMobileCopy.addEventListener('click', copyTbMobileCode);
+
         $('btnCreateBatch').addEventListener('click', createBatchFromSelected);
 
         $('selectAll').addEventListener('change', function (e) {
@@ -2201,6 +2481,9 @@
 
         var btnDafaSync = $('btnDafaSync');
         if (btnDafaSync) btnDafaSync.addEventListener('click', syncDafa);
+
+        var btnTbSetup = $('btnTbSetup');
+        if (btnTbSetup) btnTbSetup.addEventListener('click', downloadTbBookmarklet);
 
         var lbClose = $('lbClose');
         if (lbClose) lbClose.addEventListener('click', closeLightbox);
@@ -2284,6 +2567,11 @@
         if (c && typeof c.notice === 'string') noticeText = c.notice;
         renderAll();
         renderUserBar();
+
+        var tbList = readTbImportParam();
+        if (tbList) {
+          setTimeout(function () { importTbOrders(tbList); }, 400);
+        }
 
         if (currentUser) {
           startApp();
