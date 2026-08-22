@@ -563,6 +563,7 @@
               <input type="file" id="importXlsx" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none;">
             </label>
             <button type="button" class="btn-green" id="btnPushPending">推播未登錄包裹</button>
+            <button type="button" class="btn-danger" id="btnResetAllArrived" style="border-color:#f6c6c0;">全部退回待集運</button>
           </div>
           <div id="importResult"></div>
         </div>
@@ -1932,6 +1933,29 @@
         if (added) showToast('已推播 ' + added + ' 筆未登錄包裹');
         else showToast('沒有新的未登錄包裹需要推播');
       }
+      function resetAllArrived() {
+        var count = records.filter(function (r) { return r.arrived || r.batchId != null; }).length;
+        if (!count) { showToast('沒有已到貨或已入批次的包裹需要退回'); return; }
+        if (!confirm('確定將全部 ' + count + ' 筆已到貨/已入批次包裹 全部退回「待集運」？此操作會清空所有批次，已到貨日期將被清除，無法復原。')) return;
+        var ids = [];
+        records.forEach(function (r) {
+          if (r.arrived || r.batchId != null) {
+            ids.push(r.id);
+            r.batchId = null; r.arrived = false; r.arrivedAt = null;
+          }
+        });
+        var batchIds = batches.map(function (b) { return b.id; });
+        batches = [];
+        if (ids.length) {
+          persist(sb.from('records').update({ batch_id: null, arrived: false, arrived_at: null }).in('id', ids), '同步失敗：全部退回');
+        }
+        if (batchIds.length) {
+          persist(sb.from('batches').delete().in('id', batchIds), '同步失敗：清空批次');
+        }
+        cacheSave();
+        renderAll();
+        showToast('已全部退回 ' + ids.length + ' 筆為待集運');
+      }
 
       function renderNotice() {
         var box = $('noticeBox');
@@ -2475,6 +2499,9 @@
 
         var btnPush = $('btnPushPending');
         if (btnPush) btnPush.addEventListener('click', pushPendingPackages);
+
+        var btnReset = $('btnResetAllArrived');
+        if (btnReset) btnReset.addEventListener('click', resetAllArrived);
 
         var btnDafaSave = $('btnDafaSave');
         if (btnDafaSave) btnDafaSave.addEventListener('click', dafaSaveConfig);
