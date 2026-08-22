@@ -1445,10 +1445,10 @@
             r.arrived = cb.checked;
             if (cb.checked) {
               r.arrivedAt = Date.now();
-              persist(sb.from('records').update({ arrived: true, arrived_at: r.arrivedAt }).eq('id', r.id), '同步失敗：到貨狀態');
+              persist(sb.from('records').update({ arrived: true }).eq('id', r.id), '同步失敗：到貨狀態');
             } else {
               r.arrivedAt = null;
-              persist(sb.from('records').update({ arrived: false, arrived_at: null }).eq('id', r.id), '同步失敗：到貨狀態');
+              persist(sb.from('records').update({ arrived: false }).eq('id', r.id), '同步失敗：到貨狀態');
             }
             cacheSave();
             renderAll();
@@ -1463,7 +1463,7 @@
               var now = Date.now();
               var ids = recs.map(function (r) { r.arrived = true; r.arrivedAt = now; return r.id; });
               if (!ids.length) { showToast('批次沒有包裹'); return; }
-              persist(sb.from('records').update({ arrived: true, arrived_at: now }).in('id', ids), '同步失敗：全數到貨');
+              persist(sb.from('records').update({ arrived: true }).in('id', ids), '同步失敗：全數到貨');
               cacheSave();
               renderAll();
               showToast('已將 ' + b.name + ' 全部標記為到貨（' + fmtTime(now) + '）');
@@ -1493,7 +1493,7 @@
               var r = findRec(sel.value);
               if (r) {
                 r.batchId = b.id; r.arrived = false; r.arrivedAt = null;
-                persist(sb.from('records').update({ batch_id: b.id, arrived: false, arrived_at: null }).eq('id', r.id), '同步失敗：加入批次');
+                persist(sb.from('records').update({ batch_id: b.id, arrived: false }).eq('id', r.id), '同步失敗：加入批次');
                 cacheSave(); renderAll(); showToast('已加入批次');
               }
             }
@@ -1511,7 +1511,7 @@
         batches = batches.filter(function (x) { return x.id !== bid; });
         persist(sb.from('batches').delete().eq('id', bid), '同步失敗：刪除批次');
         if (ids.length) {
-          persist(sb.from('records').update({ batch_id: null, arrived: false, arrived_at: null }).in('id', ids), '同步失敗：退回未集運');
+          persist(sb.from('records').update({ batch_id: null, arrived: false }).in('id', ids), '同步失敗：退回未集運');
         }
         cacheSave();
         renderAll();
@@ -1600,7 +1600,7 @@
           if (eligible.indexOf(r.id) !== -1) { r.batchId = batch.id; r.arrived = false; r.arrivedAt = null; }
         });
         persist(sb.from('batches').insert([batchRow(batch)]), '同步失敗：建立批次');
-        persist(sb.from('records').update({ batch_id: batch.id, arrived: false, arrived_at: null }).in('id', eligible), '同步失敗：更新包裹');
+        persist(sb.from('records').update({ batch_id: batch.id, arrived: false }).in('id', eligible), '同步失敗：更新包裹');
         selected = {};
         cacheSave();
         renderAll();
@@ -1947,7 +1947,7 @@
         var batchIds = batches.map(function (b) { return b.id; });
         batches = [];
         if (ids.length) {
-          persist(sb.from('records').update({ batch_id: null, arrived: false, arrived_at: null }).in('id', ids), '同步失敗：全部退回');
+          persist(sb.from('records').update({ batch_id: null, arrived: false }).in('id', ids), '同步失敗：全部退回');
         }
         if (batchIds.length) {
           persist(sb.from('batches').delete().in('id', batchIds), '同步失敗：清空批次');
