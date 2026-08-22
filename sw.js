@@ -1,11 +1,13 @@
-var CACHE_NAME = 'taobao-shipment-v6';
+var CACHE_NAME = 'taobao-shipment-v7';
 var APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './tb-bookmarklet.js',
+  './tb-import-mobile.js'
 ];
 
 self.addEventListener('install', function (event) {
