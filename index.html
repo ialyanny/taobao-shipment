@@ -1298,7 +1298,12 @@
           }
           var tdStatus = document.createElement('td');
           var badge = document.createElement('span');
-          if (r.arrived) {
+          if (r.arrivedDate == null && r.arrivedAt == null) {
+            badge.className = 'status-badge';
+            badge.style.background = '#f1f3f4';
+            badge.style.color = 'var(--muted)';
+            badge.textContent = '未到貨';
+          } else if (r.arrived) {
             badge.className = 'status-badge';
             badge.style.background = '#e6f4ea';
             badge.style.color = 'var(--green)';
