@@ -22,12 +22,14 @@
 - [x] 淘寶導入 bookmarklet v1（個人淘寶登入、帶入待認領）→ `537d100` → **已移除** `47fe982`
 - [x] 淘寶導入改用**物流單號**＋**勾選清單**（可勾選要載入哪幾筆、自動跳過已存在）→ `63ba493` → **已移除** `47fe982`
 - [x] 淘寶導入直接掛到**登入者名下**、品項截**前 10 字**、金額自動帶入（不再走待認領）→ `700fe57` → **已移除** `47fe982`
+- [x] 大發同步：物品欄空白時自動從系統 records 補入同單號品項（已存在分支逆向補入，`rec.item` 有值且大發空白 → `update.item_name`）→ `d23b702`
 
 ## 待辦 🚧
 
 - [ ] （新 session 持續開發的起點，見 handoff.md）
 - [ ] 「采蕨」包裹確認：2026-08-15 查 Supabase records（order_no/name/item/remark）皆無此資料，應已不在系統；若大發倉庫端仍有測試包裹，下次 syncDafa 可能再被推播進待認領，屆時再處理
 - [ ] RDQ 規格卡 `rdq/RDQ-spec-mobile-tb-import-20260815.md` 已 confirmed，但功能隨後全部移除（決策紀錄，供參考不執行）
+- [ ] gh-pages 分支仍含 `tb-bookmarklet.js`、`tb-import-mobile.js`（本次未處理）；若要徹底清除可另開 session 處理
 
 ## 資料夾結構
 
