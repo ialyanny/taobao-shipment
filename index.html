@@ -2102,6 +2102,10 @@
             if (arrive != null) { update.arrived_date = arrive; if (rec) rec.arrivedDate = arrive; }
             if (cust) { update.remark = cust; if (rec) rec.remark = cust; }
             if (rec) {
+              if (rec.item && !p.itemName) {
+                update.item_name = rec.item;
+                p.itemName = rec.item;
+              }
               if (Object.keys(update).length) {
                 persist(sb.from('records').update(update).eq('id', rec.id), '同步失敗：更新包裹');
                 updated++;
