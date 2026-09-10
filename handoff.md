@@ -34,9 +34,16 @@
 - 手機自動帶入淘寶訂單不可行（iOS Safari／Android Chrome 封鎖 `javascript:` 書籤與網址列，實測確認）
 - GitHub Pages 更新偶發延遲：可用 gh-pages 空 commit 觸發重新發布
 
+## ⏯️ 補預報（2026-09-10）
+
+- 問題：YT8898714396181（俊賢／垃圾桶／8.85）資料完整卻沒上大發；查因大發已有此單（重量/到貨/照片皆有），被預報排除邏輯跳過
+- 實測：手推一次 `save` → 大發總數 4000 不變、該單物品＝垃圾桶／客户备注＝俊賢，**原地更新不重複**，安全
+- 實作：`toBackfill`（大發有單＋物品空白＋系統有姓名品項＋去重）→ `backfillDafaPackages`（共用 `dafaForecastPayload`）→ 結算訊息加「已補預報 N 筆」→ master `70d1eb5` / gh-pages `b79e494`，blob 一致
+- 之前 d23b702 的逆向補入已還原（`232b044`），改以補預報取代
+
 ## 🕐 最後更新
 
-- 時間：2026-09-04
+- 時間：2026-09-10
 - 更新者：opencode @ 均均
-- Git push：✅ 已推（master d23b702、gh-pages 3f7ea80）
+- Git push：✅ 已推（master 70d1eb5、gh-pages b79e494）
 - L3 Obsidian：❌（vault 在 D:\ObsidianVault，僅 welcome.md）
