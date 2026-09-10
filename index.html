@@ -2087,6 +2087,7 @@
         }).then(function (pkgs) {
           dafaSetState('比對倉內包裹…');
           var matched = 0, updated = 0, unmatched = [];
+          var toBackfill = [], backfillSeen = {};
           var map = {};
           records.forEach(function (r) { if (r.orderNo) map[String(r.orderNo)] = r; });
 
@@ -2107,6 +2108,10 @@
                 updated++;
               }
               matched++;
+              if (!p.itemName && rec.name && rec.item && !backfillSeen[String(no)]) {
+                backfillSeen[String(no)] = true;
+                toBackfill.push(rec);
+              }
             } else {
               if (/^TEST-/i.test(no)) return;
               unmatched.push({ orderNo: no, weight: w, arrivedDate: arrive, remark: cust, itemName: p.itemName });
@@ -2147,10 +2152,10 @@
               return dafaFetchAllPackages().then(function (allPkgs) {
                 allPkgs.forEach(function (p) { if (p.firstWaybillNo) dafaNos[String(p.firstWaybillNo)] = true; });
                 toForecast = ours.filter(function (r) { return !dafaNos[String(r.orderNo)]; });
-                return forecastDafaPackages(toForecast, pkgs.length, matched, updated, unmatched.length, newlyPushed);
+                return forecastDafaPackages(toForecast, toBackfill, pkgs.length, matched, updated, unmatched.length, newlyPushed);
               });
             }
-            finishDafaSync(pkgs.length, matched, updated, unmatched.length, newlyPushed, 0, []);
+            backfillDafaPackages(toBackfill, pkgs.length, matched, updated, unmatched.length, newlyPushed, 0, []);
           });;
         }).catch(function (e) {
           dafaSetState('');
@@ -2160,30 +2165,35 @@
           if (btn) btn.disabled = false;
         });
       }
-      function forecastDafaPackages(toForecast, total, matched, updated, unmatchN, pushed) {
+      function dafaForecastPayload(r) {
+        return {
+          firstWaybillNo: r.orderNo,
+          waybillNo: r.orderNo,
+          remark: r.remark || r.name || '',
+          forecastTotalPiece: 1,
+          warehouseCode: DAFA_WAREHOUSE,
+          unpackSendMode: '',
+          detailList: [{ itemName: r.item, itemQty: 1, itemPrice: toNum(r.amount) }]
+        };
+      }
+      function forecastDafaPackages(toForecast, toBackfill, total, matched, updated, unmatchN, pushed) {
+        function afterForecast(forecasted, failed) {
+          backfillDafaPackages(toBackfill, total, matched, updated, unmatchN, pushed, forecasted, failed);
+        }
         if (!toForecast.length) {
-          finishDafaSync(total, matched, updated, unmatchN, pushed, 0, []);
+          afterForecast(0, []);
           return;
         }
         var forecasted = 0, failed = [];
         var i = 0;
         function next() {
           if (i >= toForecast.length) {
-            finishDafaSync(total, matched, updated, unmatchN, pushed, forecasted, failed);
+            afterForecast(forecasted, failed);
             return;
           }
           var r = toForecast[i++];
           dafaSetState('預報包裹到大發…（' + i + '/' + toForecast.length + '）');
-          var pkg = {
-            firstWaybillNo: r.orderNo,
-            waybillNo: r.orderNo,
-            remark: r.remark || r.name || '',
-            forecastTotalPiece: 1,
-            warehouseCode: DAFA_WAREHOUSE,
-            unpackSendMode: '',
-            detailList: [{ itemName: r.item, itemQty: 1, itemPrice: toNum(r.amount) }]
-          };
-          dafaPost('/member-package/save?untransfer=true', { param: [pkg] })
+          dafaPost('/member-package/save?untransfer=true', { param: [dafaForecastPayload(r)] })
             .then(function (res) {
               forecasted++;
               if (res && res.data && res.data[0] && res.data[0].status === false) failed.push(r.orderNo);
@@ -2195,12 +2205,39 @@
         }
         next();
       }
-      function finishDafaSync(total, matched, updated, unmatchN, pushed, forecasted, failed) {
+      function backfillDafaPackages(toBackfill, total, matched, updated, unmatchN, pushed, forecasted, failed) {
+        if (!toBackfill.length) {
+          finishDafaSync(total, matched, updated, unmatchN, pushed, forecasted, failed, 0);
+          return;
+        }
+        var backfilled = 0;
+        var j = 0;
+        function next() {
+          if (j >= toBackfill.length) {
+            finishDafaSync(total, matched, updated, unmatchN, pushed, forecasted, failed, backfilled);
+            return;
+          }
+          var r = toBackfill[j++];
+          dafaSetState('補預報包裹到大發…（' + j + '/' + toBackfill.length + '）');
+          dafaPost('/member-package/save?untransfer=true', { param: [dafaForecastPayload(r)] })
+            .then(function (res) {
+              backfilled++;
+              if (res && res.data && res.data[0] && res.data[0].status === false) failed.push(r.orderNo);
+              next();
+            }).catch(function (e) {
+              failed.push(r.orderNo + '：' + e.message);
+              next();
+            });
+        }
+        next();
+      }
+      function finishDafaSync(total, matched, updated, unmatchN, pushed, forecasted, failed, backfilled) {
         dafaSetState('');
         var msg = '同步完成。大發包裹共 ' + total + ' 筆：\n'
           + ' ・已比對到系統包裹 ' + matched + ' 筆，其中 ' + updated + ' 筆已更新重量／到貨時間／備註\n'
           + ' ・未登錄包裹 ' + unmatchN + ' 筆，已加入待認領 ' + pushed + ' 筆\n'
-          + ' ・系統登錄但大發尚未預報的包裹，已預報 ' + forecasted + ' 筆';
+          + ' ・系統登錄但大發尚未預報的包裹，已預報 ' + forecasted + ' 筆\n'
+          + ' ・大發已有但物品空白、已補預報 ' + (backfilled || 0) + ' 筆';
         if (failed.length) msg += '\n失敗 ' + failed.length + ' 筆：' + failed.slice(0, 10).join('、');
         var cls = failed.length ? 'warn' : 'ok';
         dafaLog(cls, msg);
