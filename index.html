@@ -2166,6 +2166,8 @@
         });
       }
       function dafaForecastPayload(r) {
+        var price = toNum(r.amount);
+        if (!(price > 0)) price = 5;
         return {
           firstWaybillNo: r.orderNo,
           waybillNo: r.orderNo,
@@ -2173,7 +2175,7 @@
           forecastTotalPiece: 1,
           warehouseCode: DAFA_WAREHOUSE,
           unpackSendMode: '',
-          detailList: [{ itemName: r.item, itemQty: 1, itemPrice: toNum(r.amount) }]
+          detailList: [{ itemName: r.item, itemQty: 1, itemPrice: price }]
         };
       }
       function forecastDafaPackages(toForecast, toBackfill, total, matched, updated, unmatchN, pushed) {
