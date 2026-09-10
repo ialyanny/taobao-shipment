@@ -26,6 +26,7 @@
 
 ## ⚠️ 注意事項
 
+- 2026-09-10 照片全掛排查：程式/資料/SW 皆正常，是使用者 WiFi 連不到阿里雲廣州 OSS，切 4G 即恢復；下次先換網路測
 - 勿提交 `dafa_packages_20260812.xlsx`、`sensebar-agent-knowledge-vault-builder/`（untracked）
 - 註：gh-pages 分支仍含 `tb-bookmarklet.js`、`tb-import-mobile.js`（本次未動）；若需徹底清除可另處理
 - file:// 下 fetch/XHR 被 CORS 擋，本機測試用 http.server（`python -m http.server`）或 GitHub Pages https

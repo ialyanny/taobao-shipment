@@ -55,4 +55,5 @@
 - 大發第三方導入需桌面端「集運助手」，無法純 API 繞過（需使用者淘寶登入 session）
 - 淘寶導入已全部移除；iOS Safari／Android Chrome 皆封鎖 `javascript:` 書籤與網址列（實測確認），手機自動帶入淘寶訂單不可行
 - GitHub Pages 部署更新偶發延遲（CDN 快取）；可用 gh-pages 分支空 commit（`git commit --allow-empty -m "chore: trigger pages rebuild"`）觸發重新發布
+- 包裹照片存於阿里雲廣州 OSS（`sztwms.oss-cn-guangzhou.aliyuncs.com`）；若照片全部無法顯示，先換網路測試（2026-09-10 實測：WiFi 不行、切 4G 正常，程式與資料皆無問題）
 - Obsidian vault：`D:\ObsidianVault`（目前僅 welcome.md；L3 筆記待建立）
