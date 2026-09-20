@@ -287,8 +287,11 @@
       display: flex; align-items: center; justify-content: center; z-index: 300; padding: 24px;
       flex-direction: column;
     }
-    .img-lightbox img { max-width: 92vw; max-height: 80vh; object-fit: contain; border-radius: 4px; transition: transform .15s; }
-    .img-lightbox.has-zoom { display: block; text-align: center; }
+    .img-lightbox img { max-width: 92vw; max-height: 80vh; object-fit: contain; border-radius: 4px; transition: transform .15s; touch-action: none; }
+    .img-lightbox .lb-view {
+      flex: 1; width: 100%; min-height: 0; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; touch-action: none;
+    }
     .img-lightbox .lb-tools {
       margin-top: 12px; display: flex; gap: 10px; align-items: center; justify-content: center;
     }
@@ -298,8 +301,9 @@
     }
     .img-lightbox .lb-tools button:hover { background: rgba(255,255,255,.35); }
     .img-lightbox .lb-close {
-      position: absolute; top: 16px; right: 20px; background: none; border: none;
-      color: #fff; font-size: 30px; cursor: pointer; line-height: 1;
+      position: absolute; top: 16px; right: 20px; background: rgba(0,0,0,.5); border: none;
+      color: #fff; font-size: 30px; cursor: pointer; line-height: 1; z-index: 2;
+      width: 44px; height: 44px; border-radius: 50%;
     }
     .img-lightbox .lb-nav {
       margin-top: 12px; display: flex; gap: 10px; align-items: center; color: #fff; font-size: 14px;
@@ -632,7 +636,9 @@
   <div class="toast" id="toast"></div>
   <div class="img-lightbox" id="imgLightbox" style="display:none;">
     <button type="button" class="lb-close" id="lbClose">×</button>
-    <img id="lbImg" alt="" referrerpolicy="no-referrer">
+    <div class="lb-view" id="lbView">
+      <img id="lbImg" alt="" referrerpolicy="no-referrer">
+    </div>
     <div class="lb-nav" id="lbNav"></div>
     <div class="lb-tools" id="lbTools">
       <button type="button" id="lbRotate">旋轉</button>
@@ -1017,13 +1023,12 @@
         showToast._t = setTimeout(function () { t.classList.remove('show'); }, 2400);
       }
 
-      var lbImages = [], lbIndex = 0, lbScale = 1, lbRotate = 0;
+      var lbImages = [], lbIndex = 0, lbScale = 1, lbRotate = 0, lbTX = 0, lbTY = 0;
       function lbApplyView() {
-        $('lbImg').style.transform = 'rotate(' + lbRotate + 'deg) scale(' + lbScale + ')';
-        $('imgLightbox').classList.toggle('has-zoom', lbScale !== 1);
+        $('lbImg').style.transform = 'translate(' + lbTX + 'px,' + lbTY + 'px) rotate(' + lbRotate + 'deg) scale(' + lbScale + ')';
       }
       function lbResetView() {
-        lbScale = 1; lbRotate = 0;
+        lbScale = 1; lbRotate = 0; lbTX = 0; lbTY = 0;
         lbApplyView();
       }
       function openImageLightbox(images, index) {
@@ -2602,6 +2607,20 @@
           lbApplyView();
         });
         $('lbReset').addEventListener('click', function () { lbResetView(); });
+        var lbDrag = null;
+        $('lbView').addEventListener('pointerdown', function (e) {
+          lbDrag = { x: e.clientX, y: e.clientY };
+          try { $('lbView').setPointerCapture(e.pointerId); } catch (err) {}
+        });
+        $('lbView').addEventListener('pointermove', function (e) {
+          if (!lbDrag) return;
+          lbTX += e.clientX - lbDrag.x;
+          lbTY += e.clientY - lbDrag.y;
+          lbDrag = { x: e.clientX, y: e.clientY };
+          lbApplyView();
+        });
+        $('lbView').addEventListener('pointerup', function () { lbDrag = null; });
+        $('lbView').addEventListener('pointercancel', function () { lbDrag = null; });
 
         var btnLogin = $('btnLogin');
         if (btnLogin) btnLogin.addEventListener('click', doLogin);
