@@ -2644,6 +2644,13 @@
         });
         $('lbView').addEventListener('pointerup', function () { lbDrag = null; });
         $('lbView').addEventListener('pointercancel', function () { lbDrag = null; });
+        $('lbView').addEventListener('wheel', function (e) {
+          if (lbNoDrag) return;
+          e.preventDefault();
+          var d = e.deltaY < 0 ? 0.25 : -0.25;
+          lbScale = Math.min(4, Math.max(0.5, Math.round((lbScale + d) * 100) / 100));
+          lbApplyView();
+        }, { passive: false });
 
         var btnLogin = $('btnLogin');
         if (btnLogin) btnLogin.addEventListener('click', doLogin);
