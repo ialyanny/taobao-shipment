@@ -2642,11 +2642,13 @@
         });
         $('lbView').addEventListener('pointermove', function (e) {
           if (!lbDrag) return;
+          if (e.buttons === 0) { lbEndDrag(); return; }
           lbTX += e.clientX - lbDrag.x;
           lbTY += e.clientY - lbDrag.y;
           lbDrag = { x: e.clientX, y: e.clientY };
           lbApplyView();
         });
+        document.addEventListener('mouseup', function () { lbEndDrag(); });
         $('lbView').addEventListener('pointerup', function () { lbEndDrag(); });
         $('lbView').addEventListener('pointercancel', function () { lbEndDrag(); });
         $('lbView').addEventListener('lostpointercapture', function () { lbEndDrag(); });
