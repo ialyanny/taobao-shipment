@@ -1956,7 +1956,7 @@
             time: p.arrivedDate || Date.now(),
             name: '',
             orderNo: p.orderNo,
-            item: '',
+            item: p.itemName || '',
             amount: '',
             batchId: null,
             arrived: false,
@@ -2077,6 +2077,12 @@
           });
         });
       }
+      function photoUrlsFresh(urls) {
+        if (!urls || !urls.length) return false;
+        var m = String(urls[0]).match(/[?&]Expires=(\d+)/);
+        if (!m) return true;
+        return (+m[1] * 1000) > (Date.now() + 7 * 86400000);
+      }
       function dafaQueryImages(firstWaybillNo, warehouseCode) {
         var path = '/member-package/queryImages?firstWaybillNo=' + encodeURIComponent(firstWaybillNo)
           + '&companyCode=tmytsc&warehouseCode=' + encodeURIComponent(warehouseCode || DAFA_WAREHOUSE);
@@ -2126,6 +2132,7 @@
         }).then(function (pkgs) {
           dafaSetState('比對倉內包裹…');
           var matched = 0, updated = 0, unmatched = [];
+          var matchedSeen = {};
           var toBackfill = [], backfillSeen = {};
           var map = {};
           records.forEach(function (r) { if (r.orderNo) map[String(r.orderNo)] = r; });
@@ -2146,7 +2153,7 @@
                 persist(sb.from('records').update(update).eq('id', rec.id), '同步失敗：更新包裹');
                 updated++;
               }
-              matched++;
+              if (!matchedSeen[String(no)]) { matchedSeen[String(no)] = true; matched++; }
               var needItem = !p.itemName;
               var needPrice = !(toNum(p.itemPrice) > 0);
               if ((needItem || needPrice) && rec.name && rec.item && !backfillSeen[String(no)]) {
@@ -2164,8 +2171,15 @@
           renderAll();
 
           dafaSetState('抓取包裹照片…');
-          var imgTasks = pkgs.filter(function (p) { return p.firstWaybillNo; })
-            .map(function (p) {
+          var imgSeen = {};
+          var imgTasks = pkgs.filter(function (p) {
+            if (!p.firstWaybillNo) return false;
+            var k = String(p.firstWaybillNo);
+            if (imgSeen[k]) return false;
+            imgSeen[k] = true;
+            var mr = map[k];
+            return !(mr && photoUrlsFresh(mr.packageImages));
+          }).map(function (p) {
               return dafaQueryImages(p.firstWaybillNo, p.warehouseCode).then(function (urls) {
                 var rec = null;
                 for (var i = 0; i < records.length; i++) {
@@ -2197,7 +2211,7 @@
               });
             }
             backfillDafaPackages(toBackfill, pkgs.length, matched, updated, unmatched.length, newlyPushed, 0, []);
-          });;
+          });
         }).catch(function (e) {
           dafaSetState('');
           dafaLog('err', '同步失敗：' + (e && e.message ? e.message : e));
