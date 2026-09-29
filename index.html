@@ -1039,6 +1039,10 @@
         lbScale = 1; lbRotate = 0; lbTX = 0; lbTY = 0;
         lbApplyView();
       }
+      function lbEndDrag() {
+        lbDrag = null;
+        $('lbImg').style.transition = '';
+      }
       function openImageLightbox(images, index) {
         if (!images || !images.length) return;
         lbImages = images.slice();
@@ -2633,6 +2637,7 @@
         $('lbView').addEventListener('pointerdown', function (e) {
           if (lbNoDrag) return;
           lbDrag = { x: e.clientX, y: e.clientY };
+          $('lbImg').style.transition = 'none';
           try { $('lbView').setPointerCapture(e.pointerId); } catch (err) {}
         });
         $('lbView').addEventListener('pointermove', function (e) {
@@ -2642,8 +2647,9 @@
           lbDrag = { x: e.clientX, y: e.clientY };
           lbApplyView();
         });
-        $('lbView').addEventListener('pointerup', function () { lbDrag = null; });
-        $('lbView').addEventListener('pointercancel', function () { lbDrag = null; });
+        $('lbView').addEventListener('pointerup', function () { lbEndDrag(); });
+        $('lbView').addEventListener('pointercancel', function () { lbEndDrag(); });
+        $('lbView').addEventListener('lostpointercapture', function () { lbEndDrag(); });
         $('lbView').addEventListener('wheel', function (e) {
           if (lbNoDrag) return;
           e.preventDefault();
