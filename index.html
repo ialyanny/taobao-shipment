@@ -310,6 +310,8 @@
     .line-name { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
     .line-text { white-space: pre-wrap; word-break: break-all; background: #f8f9fa; border-radius: 6px; padding: 10px; font-size: 14px; line-height: 1.7; font-family: inherit; margin: 0 0 10px; }
     .line-share-btn { text-decoration: none; display: inline-block; text-align: center; }
+    #lineBody { max-height: 55vh; overflow-y: auto; }
+    .line-x { position: absolute; top: 8px; right: 12px; background: none; border: none; font-size: 26px; color: var(--muted); cursor: pointer; line-height: 1; padding: 4px 8px; }
     .img-lightbox .lb-close {
       position: absolute; top: 16px; right: 20px; background: rgba(0,0,0,.5); border: none;
       color: #fff; font-size: 28px; cursor: pointer; line-height: 1; z-index: 2;
@@ -345,11 +347,12 @@
     .name-btn:disabled { opacity: .4; cursor: not-allowed; }
     .login-mask {
       position: fixed; inset: 0; background: rgba(60, 64, 67, .55);
-      display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px;
+      display: flex; align-items: flex-start; justify-content: center; z-index: 200; padding: 16px;
+      overflow-y: auto;
     }
     .login-card {
       background: #fff; border-radius: 10px; padding: 28px 24px; width: 100%; max-width: 420px;
-      box-shadow: 0 8px 24px rgba(0,0,0,.25);
+      box-shadow: 0 8px 24px rgba(0,0,0,.25); margin: auto; position: relative;
     }
     .login-card h2 { font-size: 20px; margin-bottom: 6px; }
     .login-card p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 14px; }
@@ -426,6 +429,7 @@
 
   <div class="login-mask" id="lineOverlay" style="display:none">
     <div class="login-card">
+      <button type="button" class="line-x" id="btnLineX">×</button>
       <h2 id="lineTitle">LINE 到貨通知</h2>
       <p>一人一封，點「分享到 LINE」選收件人傳送；或先複製文字再到 LINE 貼上。</p>
       <div id="lineBody"></div>
@@ -2693,6 +2697,8 @@
         if (lbClose) lbClose.addEventListener('click', closeLightbox);
         var btnLineClose = $('btnLineClose');
         if (btnLineClose) btnLineClose.addEventListener('click', function () { $('lineOverlay').style.display = 'none'; });
+        var btnLineX = $('btnLineX');
+        if (btnLineX) btnLineX.addEventListener('click', function () { $('lineOverlay').style.display = 'none'; });
         $('imgLightbox').addEventListener('click', function (e) {
           if (e.target === $('imgLightbox')) closeLightbox();
         });
