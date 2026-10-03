@@ -306,6 +306,10 @@
       padding: 6px 14px; cursor: pointer; font-size: 14px;
     }
     .img-lightbox .lb-tools button:hover { background: rgba(255,255,255,.35); }
+    .line-person { border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-top: 12px; }
+    .line-name { font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+    .line-text { white-space: pre-wrap; word-break: break-all; background: #f8f9fa; border-radius: 6px; padding: 10px; font-size: 14px; line-height: 1.7; font-family: inherit; margin: 0 0 10px; }
+    .line-share-btn { text-decoration: none; display: inline-block; text-align: center; }
     .img-lightbox .lb-close {
       position: absolute; top: 16px; right: 20px; background: rgba(0,0,0,.5); border: none;
       color: #fff; font-size: 28px; cursor: pointer; line-height: 1; z-index: 2;
@@ -417,6 +421,17 @@
         <button type="button" class="btn-clear" id="btnClaimCancel">取消</button>
       </div>
       <div class="error" id="claimError"></div>
+    </div>
+  </div>
+
+  <div class="login-mask" id="lineOverlay" style="display:none">
+    <div class="login-card">
+      <h2 id="lineTitle">LINE 到貨通知</h2>
+      <p>一人一封，點「分享到 LINE」選收件人傳送；或先複製文字再到 LINE 貼上。</p>
+      <div id="lineBody"></div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button type="button" class="btn-clear" id="btnLineClose">關閉</button>
+      </div>
     </div>
   </div>
 
@@ -1451,6 +1466,7 @@
           + '<div class="batch-actions">'
           + '<button type="button" class="btn-sm btn-green" data-act="print">列印核對單</button>'
           + '<button type="button" class="btn-sm" data-act="csv">匯出 CSV</button>'
+          + '<button type="button" class="btn-sm btn-green" data-act="line">LINE 到貨通知</button>'
           + '<button type="button" class="btn-sm" data-act="arrived">全數到貨</button>'
           + '<button type="button" class="btn-sm btn-danger" data-act="deleteArrived">刪除已到貨包裹</button>'
           + '<button type="button" class="btn-sm btn-danger" data-act="undo">退回未集運</button>'
@@ -1507,6 +1523,7 @@
             var act = btn.dataset.act;
             if (act === 'print') { printBatch(b.id); }
             else if (act === 'csv') { exportBatchCSV(b.id); }
+            else if (act === 'line') { openLineShare(b.id); }
             else if (act === 'arrived') {
               var now = Date.now();
               var ids = recs.map(function (r) { r.arrived = true; r.arrivedAt = now; return r.id; });
@@ -1515,6 +1532,7 @@
               cacheSave();
               renderAll();
               showToast('已將 ' + b.name + ' 全部標記為到貨（' + fmtTime(now) + '）');
+              openLineShare(b.id);
             }
             else if (act === 'deleteArrived') {
               var arrivedRecs = recs.filter(function (r) { return r.arrived; });
@@ -1627,7 +1645,63 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(a.href);
-        showToast('CSV 已匯出 ' + recs.length + ' 筆');
+          showToast('CSV 已匯出 ' + recs.length + ' 筆');
+      }
+
+      var lineShareTexts = {};
+      function lineShareText(name, list) {
+        var lines = ['【集運到貨】' + name + '（共' + list.length + '件）'];
+        var sum = 0;
+        list.forEach(function (r, i) {
+          lines.push((i + 1) + '. ' + (r.item || '（品項未填）') + ' ' + r.orderNo);
+          sum += toNum(r.amount);
+        });
+        lines.push('總金額 ¥' + round2(sum));
+        lines.push('到貨囉，請找管理員領貨～');
+        return lines.join('\n');
+      }
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      function copyLineText(text) {
+        function done() { showToast('已複製，到 LINE 貼上即可'); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+        } else { fallbackCopy(text); done(); }
+      }
+      function openLineShare(bid) {
+        var b = findBatch(bid);
+        var recs = records.filter(function (r) { return r.batchId === bid && r.arrived && r.name; });
+        if (!recs.length) { showToast('這批還沒有已到貨且有姓名的包裹'); return; }
+        var groups = {};
+        recs.forEach(function (r) { (groups[r.name] = groups[r.name] || []).push(r); });
+        lineShareTexts = {};
+        var names = Object.keys(groups).sort();
+        var html = '';
+        names.forEach(function (nm) {
+          var text = lineShareText(nm, groups[nm]);
+          lineShareTexts[nm] = text;
+          html += '<div class="line-person">'
+            + '<div class="line-name">' + esc(nm) + '（共' + groups[nm].length + '件）</div>'
+            + '<pre class="line-text">' + esc(text) + '</pre>'
+            + '<div class="btn-row">'
+            + '<a class="btn-submit line-share-btn" target="_blank" rel="noopener" href="https://line.me/R/msg/text/?' + encodeURIComponent(text) + '">分享到 LINE</a>'
+            + '<button type="button" class="btn-clear" data-copy="' + esc(nm) + '">複製文字</button>'
+            + '</div></div>';
+        });
+        $('lineBody').innerHTML = html;
+        $('lineBody').querySelectorAll('[data-copy]').forEach(function (btn) {
+          btn.addEventListener('click', function () { copyLineText(lineShareTexts[btn.getAttribute('data-copy')] || ''); });
+        });
+        $('lineTitle').textContent = 'LINE 到貨通知' + (b ? '｜' + b.name : '');
+        $('lineOverlay').style.display = 'flex';
       }
 
       function createBatchFromSelected() {
@@ -2617,6 +2691,8 @@
 
         var lbClose = $('lbClose');
         if (lbClose) lbClose.addEventListener('click', closeLightbox);
+        var btnLineClose = $('btnLineClose');
+        if (btnLineClose) btnLineClose.addEventListener('click', function () { $('lineOverlay').style.display = 'none'; });
         $('imgLightbox').addEventListener('click', function (e) {
           if (e.target === $('imgLightbox')) closeLightbox();
         });
