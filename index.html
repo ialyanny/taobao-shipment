@@ -437,6 +437,7 @@
       <p>一人一封，點「分享到 LINE」選收件人傳送；或先複製文字再到 LINE 貼上。</p>
       <div class="line-rates">海快單價 <input type="text" id="lineRateShip" value="10" inputmode="decimal"> 元/kg　匯率 <input type="text" id="lineRateFx" value="4.75" inputmode="decimal">
         <div id="lineTotal"></div>
+        <button type="button" class="btn-sm" id="btnLineXlsAll" style="margin-top:6px;">下載整批 Excel</button>
       </div>
       <div id="lineBody"></div>
       <div class="btn-row" style="margin-top:12px;">
@@ -1659,6 +1660,7 @@
       }
 
       var lineShareTexts = {};
+      var lineShareData = {};
       var lineCurrentBid = null, lineShipRate = 10, lineFxRate = 4.75;
       function lineDate(ts) { var d = new Date(ts || Date.now()); return (d.getMonth() + 1) + '/' + d.getDate(); }
       function lineRowCost(r) {
@@ -1683,6 +1685,50 @@
         lines.push('小計：人民幣' + round2(sumRmb) + '｜台幣' + subTwd);
         lines.push('到貨囉，請找管理員領貨～');
         return { text: lines.join('\n'), twd: subTwd, rmb: sumRmb };
+      }
+      function lineExcelRows(list, startNum) {
+        var aoa = [['到貨日', '單號', '品項', '費用', '重量', '包稅海快' + lineShipRate, '人民幣' + lineFxRate, '台幣', '數量', '姓名']];
+        var sumRmb = 0;
+        list.forEach(function (r, i) {
+          var c = lineRowCost(r);
+          sumRmb = round2(sumRmb + c.rmb);
+          aoa.push([lineDate(r.arrivedAt || r.arrivedDate) + '到貨', String(r.orderNo), r.item || '', c.fee > 0 ? c.fee : '', toNum(r.weight), c.ship, c.rmb, c.twd, startNum + i, r.name]);
+        });
+        aoa.push(['', '', '', '', '', '', '', Math.round(sumRmb * lineFxRate), '', '合計']);
+        return aoa;
+      }
+      function downloadLineExcel(list, startNum, fname) {
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(lineExcelRows(list, startNum));
+        ws['!cols'] = [{ wch: 10 }, { wch: 18 }, { wch: 16 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 8 }];
+        XLSX.utils.book_append_sheet(wb, ws, '到貨通知');
+        XLSX.writeFile(wb, fname);
+      }
+      function lineFileDate() { return new Date().toISOString().slice(0, 10); }
+      function downloadBatchExcel() {
+        if (!lineCurrentBid) return;
+        var recs = records.filter(function (r) { return r.batchId === lineCurrentBid && r.arrived && r.name; });
+        if (!recs.length) { showToast('這批還沒有已到貨且有姓名的包裹'); return; }
+        var groups = {};
+        recs.forEach(function (r) { (groups[r.name] = groups[r.name] || []).push(r); });
+        var names = Object.keys(groups).sort(), all = [], num = 1;
+        names.forEach(function (nm) {
+          groups[nm].forEach(function (r) { all.push({ r: r, n: num++ }); });
+        });
+        var aoa = [['到貨日', '單號', '品項', '費用', '重量', '包稅海快' + lineShipRate, '人民幣' + lineFxRate, '台幣', '數量', '姓名']];
+        var sumRmb = 0;
+        all.forEach(function (x) {
+          var c = lineRowCost(x.r);
+          sumRmb = round2(sumRmb + c.rmb);
+          aoa.push([lineDate(x.r.arrivedAt || x.r.arrivedDate) + '到貨', String(x.r.orderNo), x.r.item || '', c.fee > 0 ? c.fee : '', toNum(x.r.weight), c.ship, c.rmb, c.twd, x.n, x.r.name]);
+        });
+        aoa.push(['', '', '', '', '', '', '', Math.round(sumRmb * lineFxRate), '', '合計']);
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = [{ wch: 10 }, { wch: 18 }, { wch: 16 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 8 }, { wch: 6 }, { wch: 8 }];
+        XLSX.utils.book_append_sheet(wb, ws, '到貨通知');
+        XLSX.writeFile(wb, '到貨通知_整批_' + lineFileDate() + '.xlsx');
+        showToast('整批 Excel 已下載，到 LINE 用傳檔案送出');
       }
       function fallbackCopy(text) {
         var ta = document.createElement('textarea');
@@ -1715,10 +1761,12 @@
         var groups = {};
         recs.forEach(function (r) { (groups[r.name] = groups[r.name] || []).push(r); });
         lineShareTexts = {};
+        lineShareData = {};
         var names = Object.keys(groups).sort();
         var html = '', num = 1, batchRmb = 0;
         names.forEach(function (nm) {
           var res = lineShareText(nm, groups[nm], num);
+          lineShareData[nm] = { list: groups[nm], start: num };
           num += groups[nm].length;
           batchRmb = round2(batchRmb + res.rmb);
           lineShareTexts[nm] = res.text;
@@ -1727,12 +1775,19 @@
             + '<pre class="line-text">' + esc(res.text) + '</pre>'
             + '<div class="btn-row">'
             + '<a class="btn-submit line-share-btn" target="_blank" rel="noopener" href="https://line.me/R/msg/text/?' + encodeURIComponent(res.text) + '">分享到 LINE</a>'
+            + '<button type="button" class="btn-clear" data-xls="' + esc(nm) + '">下載 Excel</button>'
             + '<button type="button" class="btn-clear" data-copy="' + esc(nm) + '">複製文字</button>'
             + '</div></div>';
         });
         $('lineBody').innerHTML = html;
         $('lineBody').querySelectorAll('[data-copy]').forEach(function (btn) {
           btn.addEventListener('click', function () { copyLineText(lineShareTexts[btn.getAttribute('data-copy')] || ''); });
+        });
+        $('lineBody').querySelectorAll('[data-xls]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var d = lineShareData[btn.getAttribute('data-xls')];
+            if (d) downloadLineExcel(d.list, d.start, '到貨通知_' + btn.getAttribute('data-xls') + '_' + lineFileDate() + '.xlsx');
+          });
         });
         $('lineTotal').textContent = '本批共' + recs.length + '件，合計台幣' + Math.round(batchRmb * lineFxRate);
         $('lineTitle').textContent = 'LINE 到貨通知' + (b ? '｜' + b.name : '');
@@ -2729,6 +2784,8 @@
         if (btnLineClose) btnLineClose.addEventListener('click', function () { $('lineOverlay').style.display = 'none'; });
         var btnLineX = $('btnLineX');
         if (btnLineX) btnLineX.addEventListener('click', function () { $('lineOverlay').style.display = 'none'; });
+        var btnLineXlsAll = $('btnLineXlsAll');
+        if (btnLineXlsAll) btnLineXlsAll.addEventListener('click', function () { downloadBatchExcel(); });
         ['lineRateShip', 'lineRateFx'].forEach(function (id) {
           var el = $(id);
           if (el) el.addEventListener('input', function () {
