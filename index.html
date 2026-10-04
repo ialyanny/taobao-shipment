@@ -311,6 +311,9 @@
     .line-text { white-space: pre-wrap; word-break: break-all; background: #f8f9fa; border-radius: 6px; padding: 10px; font-size: 14px; line-height: 1.7; font-family: inherit; margin: 0 0 10px; }
     .line-share-btn { text-decoration: none; display: inline-block; text-align: center; }
     #lineBody { max-height: 55vh; overflow-y: auto; }
+    .line-rates { font-size: 14px; margin-bottom: 4px; }
+    .line-rates input { width: 56px; padding: 4px 6px; font-size: 14px; }
+    #lineTotal { font-weight: 700; margin-top: 6px; }
     .line-x { position: absolute; top: 8px; right: 12px; background: none; border: none; font-size: 26px; color: var(--muted); cursor: pointer; line-height: 1; padding: 4px 8px; }
     .img-lightbox .lb-close {
       position: absolute; top: 16px; right: 20px; background: rgba(0,0,0,.5); border: none;
@@ -432,6 +435,9 @@
       <button type="button" class="line-x" id="btnLineX">×</button>
       <h2 id="lineTitle">LINE 到貨通知</h2>
       <p>一人一封，點「分享到 LINE」選收件人傳送；或先複製文字再到 LINE 貼上。</p>
+      <div class="line-rates">海快單價 <input type="text" id="lineRateShip" value="10" inputmode="decimal"> 元/kg　匯率 <input type="text" id="lineRateFx" value="4.75" inputmode="decimal">
+        <div id="lineTotal"></div>
+      </div>
       <div id="lineBody"></div>
       <div class="btn-row" style="margin-top:12px;">
         <button type="button" class="btn-clear" id="btnLineClose">關閉</button>
@@ -1653,16 +1659,30 @@
       }
 
       var lineShareTexts = {};
-      function lineShareText(name, list) {
+      var lineCurrentBid = null, lineShipRate = 10, lineFxRate = 4.75;
+      function lineDate(ts) { var d = new Date(ts || Date.now()); return (d.getMonth() + 1) + '/' + d.getDate(); }
+      function lineRowCost(r) {
+        var fee = toNum(r.amount);
+        var ship = round2(toNum(r.weight) * lineShipRate);
+        var rmb = round2(fee + ship);
+        var twd = Math.round(rmb * lineFxRate);
+        return { fee: fee, ship: ship, rmb: rmb, twd: twd };
+      }
+      function lineShareText(name, list, startNum) {
         var lines = ['【集運到貨】' + name + '（共' + list.length + '件）'];
-        var sum = 0;
+        var sumRmb = 0, sumTwd = 0;
         list.forEach(function (r, i) {
-          lines.push((i + 1) + '. ' + (r.item || '（品項未填）') + ' ' + r.orderNo);
-          sum += toNum(r.amount);
+          var c = lineRowCost(r);
+          sumRmb = round2(sumRmb + c.rmb);
+          sumTwd += c.twd;
+          lines.push((startNum + i) + '. ' + lineDate(r.arrivedAt || r.arrivedDate) + '到貨 ' + r.orderNo + ' ' + (r.item || '（品項未填）')
+            + '｜重' + toNum(r.weight).toFixed(2) + 'kg｜運費' + round2(c.ship) + '｜費用' + (c.fee > 0 ? c.fee.toFixed(2) : '-')
+            + '｜人民幣' + round2(c.rmb) + '｜台幣' + c.twd);
         });
-        lines.push('總金額 ¥' + round2(sum));
+        var subTwd = Math.round(sumRmb * lineFxRate);
+        lines.push('小計：人民幣' + round2(sumRmb) + '｜台幣' + subTwd);
         lines.push('到貨囉，請找管理員領貨～');
-        return lines.join('\n');
+        return { text: lines.join('\n'), twd: subTwd, rmb: sumRmb };
       }
       function fallbackCopy(text) {
         var ta = document.createElement('textarea');
@@ -1681,6 +1701,14 @@
         } else { fallbackCopy(text); done(); }
       }
       function openLineShare(bid) {
+        lineCurrentBid = bid;
+        if ($('lineRateShip')) $('lineRateShip').value = lineShipRate;
+        if ($('lineRateFx')) $('lineRateFx').value = lineFxRate;
+        renderLineBody();
+        $('lineOverlay').style.display = 'flex';
+      }
+      function renderLineBody() {
+        var bid = lineCurrentBid;
         var b = findBatch(bid);
         var recs = records.filter(function (r) { return r.batchId === bid && r.arrived && r.name; });
         if (!recs.length) { showToast('這批還沒有已到貨且有姓名的包裹'); return; }
@@ -1688,15 +1716,17 @@
         recs.forEach(function (r) { (groups[r.name] = groups[r.name] || []).push(r); });
         lineShareTexts = {};
         var names = Object.keys(groups).sort();
-        var html = '';
+        var html = '', num = 1, batchRmb = 0;
         names.forEach(function (nm) {
-          var text = lineShareText(nm, groups[nm]);
-          lineShareTexts[nm] = text;
+          var res = lineShareText(nm, groups[nm], num);
+          num += groups[nm].length;
+          batchRmb = round2(batchRmb + res.rmb);
+          lineShareTexts[nm] = res.text;
           html += '<div class="line-person">'
-            + '<div class="line-name">' + esc(nm) + '（共' + groups[nm].length + '件）</div>'
-            + '<pre class="line-text">' + esc(text) + '</pre>'
+            + '<div class="line-name">' + esc(nm) + '（共' + groups[nm].length + '件，小計台幣' + res.twd + '）</div>'
+            + '<pre class="line-text">' + esc(res.text) + '</pre>'
             + '<div class="btn-row">'
-            + '<a class="btn-submit line-share-btn" target="_blank" rel="noopener" href="https://line.me/R/msg/text/?' + encodeURIComponent(text) + '">分享到 LINE</a>'
+            + '<a class="btn-submit line-share-btn" target="_blank" rel="noopener" href="https://line.me/R/msg/text/?' + encodeURIComponent(res.text) + '">分享到 LINE</a>'
             + '<button type="button" class="btn-clear" data-copy="' + esc(nm) + '">複製文字</button>'
             + '</div></div>';
         });
@@ -1704,8 +1734,8 @@
         $('lineBody').querySelectorAll('[data-copy]').forEach(function (btn) {
           btn.addEventListener('click', function () { copyLineText(lineShareTexts[btn.getAttribute('data-copy')] || ''); });
         });
+        $('lineTotal').textContent = '本批共' + recs.length + '件，合計台幣' + Math.round(batchRmb * lineFxRate);
         $('lineTitle').textContent = 'LINE 到貨通知' + (b ? '｜' + b.name : '');
-        $('lineOverlay').style.display = 'flex';
       }
 
       function createBatchFromSelected() {
@@ -2699,6 +2729,15 @@
         if (btnLineClose) btnLineClose.addEventListener('click', function () { $('lineOverlay').style.display = 'none'; });
         var btnLineX = $('btnLineX');
         if (btnLineX) btnLineX.addEventListener('click', function () { $('lineOverlay').style.display = 'none'; });
+        ['lineRateShip', 'lineRateFx'].forEach(function (id) {
+          var el = $(id);
+          if (el) el.addEventListener('input', function () {
+            var s = toNum($('lineRateShip').value), f = toNum($('lineRateFx').value);
+            if (s > 0) lineShipRate = s;
+            if (f > 0) lineFxRate = f;
+            if (lineCurrentBid && $('lineOverlay').style.display !== 'none') renderLineBody();
+          });
+        });
         $('imgLightbox').addEventListener('click', function (e) {
           if (e.target === $('imgLightbox')) closeLightbox();
         });
