@@ -2,48 +2,66 @@
 
 ## ⏯️ 目前做到哪
 
-**大發同步：物品欄空白時，自動從系統 records 補入同單號品項**（master `d23b702` / gh-pages `3f7ea80`，blob 一致）。
+**大發對接除錯 + 需求落地（2026-11-02）**：分頁 off-by-one、已集運包裹不再回推、推送前逐一確認單號。
 
-本次歷程（2026-09-04）：
-1. 使用者需求：大發物品欄空白時，自動從系統 records 補入同單號的品項
-2. 分析 syncDafa（`index.html` 行 ~2093-2118）：問題在 unmatched.push 時 `rec` 必為 undefined（有 map[no] 就走已存在分支），無法從 map 取 item
-3. 方案：在**已存在分支**加入逆向補入——若 `rec.item` 有值且大發 `p.itemName` 空白 → `update.item_name = rec.item` 並同步到 `p.itemName`（順便帶回大發）
-4. 真正 unmatched（系統無此單號）本來就沒資料可填，不需要處理
-5. 驗證：`new Function` 語法通過；node 單元模擬測試（mock records + mock pkgs）全 PASS（matched=3、updated=2、TEST- 跳過、unmatched 只留新單號）
-6. 部署：master commit `d23b702` → gh-pages `3f7ea80`，blob 均 `c171c450…` 一致
+使用者需求（本次）：
+1. 大發網站物品欄空白時，自動帶入我們系統有記錄的資料
+2. 我們系統已經集運的包裹，不要再帶入大發系統
+
+### 實測（唯讀，只登入與查詢，未送出任何預報）
+
+| 項目 | 結果 |
+|---|---|
+| 登入 `portal/auth/login` | ✅ 取得 token |
+| CORS（Origin=ialyanny.github.io） | ✅ 有回 `access-control-allow-origin` |
+| `query/page-list` 總筆數 | 4076（900 已發運 3986、500 揀貨 5、990 取消 3、130 中轉上架 2、700 裝箱 2、997 銷毀 1、110 預報入庫 1） |
+| 倉內（110/120/130） | 僅 3 筆 |
+| `queryImages` | ✅ 正常回阿里雲 OSS 簽名網址 |
+| `firstWaybillNo` 精準查詢 | ✅ 跨狀態可查（不存在回 total=0） |
+| Supabase records | 56 筆（54 已集運、2 待集運） |
+
+### 修掉的三個問題
+
+1. **分頁 off-by-one（真 bug）**：大發 `pageNum` 是 **1 起算**，`pageNum=0` 與 `1` 回同一頁。舊碼 `page(0)` 起算 → 第一頁重複、**最後一頁永遠抓不到**（實測少 76 筆，2021-11～2023-08 舊包裹）。已改 1 起算 + 以 `id` 去重 + `maxPage` 上限，實測 21 次請求抓到 4076 筆（與 API total 一致）。
+2. **已集運包裹仍會被推預報（真 bug）**：`toForecast` 只濾 `name && item`。已改 `r.name && r.item && r.batchId == null && !r.arrived`。
+3. **重複帶入風險**：新增 `dafaFindPackage(no)`，推送前用 `firstWaybillNo` 逐一確認；大發任何狀態已有此單號就跳過（`skipped`），查詢失敗也跳過（列入 failed 提示），不再誤推。因為改用逐一確認，**移除原本每次同步抓 4000+ 筆（21 次請求）的比對**。
+
+### 順手修掉
+
+- 補預報改為只要系統 `rec.item` 有值就補（原本要求有姓名，待認領包裹補不到品項）
+- 補預報保留大發原有 `customerRemark`（`dafaForecastPayload(r, preferRemark)`），不再被系統姓名覆蓋
 
 ## 🚦 目前狀態
 
-可運行（GitHub Pages https 正常）。syncDafa 於已存在分支現在會：
-- 大發有 item、系統空白 → 保留（不覆蓋）
-- 大發空白、系統有 item → 用系統 item 補入
-- 兩邊都有 → 以既有 update（weight/arrived_date/remark）為準
+- 程式已改在 **master 工作區**（`index.html`、`AGENTS.md`、`handoff.md`、`sw.js`）
+- `node` 語法檢查通過（inline script `new Function` OK）
+- 分頁新邏輯已用真實 API 驗證：4076 筆 / 21 次請求，含最後一頁樣本 `433399149170859`
+- 預報篩選邏輯已用 mock 驗證：已集運、已到貨、無姓名都不會被推
 
-## ➡️ 下一步（歷史遺留，判斷是否仍適用）
+### 已完成的大發資料整理（2026-11-02）
 
-1. 「采蕨」包裹：2026-08-15 查 Supabase records（order_no/name/item/remark）皆無，應已不在系統；若大發倉庫端仍有測試包裹，下次 syncDafa 可能再被推播進待認領，屆時再處理
-2. `rdq/RDQ-spec-mobile-tb-import-20260815.md` 規格卡保留為決策紀錄（confirmed 但功能已移除）
+- `435425505350380`（榮吉／路亞鉗）為**換過的單號**，使用者確認應保留
+- 舊預報 `9840119456912`（id `2109950480023695362`、路亞鉗／榮吉／110 預報入庫）**已從大發刪除**：`POST /member-package/remove`，body `{"ids":["<id>"]}`（實測 `ids` 是正確欄位，其他如 `param`/`id` 都會回「失败」）
+- 刪除後大發總筆數 4076 → 4075；`435425505350380` 目前查無，下次同步會自動預報進去
+
+## ➡️ 下一步
+
+1. 使用者於 iPad／瀏覽器實測一次「大發同步」，確認：`435425505350380` 被預報、訊息出現「已跳過不重複帶入 N 筆」
+2. 大發 `79155198366175`（130 中轉上架、物品空白、無備註、120g、2026-11-02 建立）系統查無 → 下次同步會進待認領，需人工認領填品項
 
 ## ⚠️ 注意事項
 
+- 大發 `pageNum` **1 起算**，別再從 0 開始
+- `query/page-list` 帶 `firstWaybillNo` 可精準查單筆，跨所有狀態
 - 2026-09-10 照片全掛排查：程式/資料/SW 皆正常，是使用者 WiFi 連不到阿里雲廣州 OSS，切 4G 即恢復；下次先換網路測
 - 勿提交 `dafa_packages_20260812.xlsx`、`sensebar-agent-knowledge-vault-builder/`（untracked）
-- 註：gh-pages 分支仍含 `tb-bookmarklet.js`、`tb-import-mobile.js`（本次未動）；若需徹底清除可另處理
-- file:// 下 fetch/XHR 被 CORS 擋，本機測試用 http.server（`python -m http.server`）或 GitHub Pages https
-- 大發第三方導入需桌面端「集運助手」，無法純 API 繞過
+- gh-pages 分支仍含 `tb-bookmarklet.js`、`tb-import-mobile.js`
+- file:// 下 fetch/XHR 被 CORS 擋，本機測試用 `python -m http.server` 或 GitHub Pages https
 - 手機自動帶入淘寶訂單不可行（iOS Safari／Android Chrome 封鎖 `javascript:` 書籤與網址列，實測確認）
-- GitHub Pages 更新偶發延遲：可用 gh-pages 空 commit 觸發重新發布
-
-## ⏯️ 補預報（2026-09-10）
-
-- 問題：YT8898714396181（俊賢／垃圾桶／8.85）資料完整卻沒上大發；查因大發已有此單（重量/到貨/照片皆有），被預報排除邏輯跳過
-- 實測：手推一次 `save` → 大發總數 4000 不變、該單物品＝垃圾桶／客户备注＝俊賢，**原地更新不重複**，安全
-- 實作：`toBackfill`（大發有單＋物品空白＋系統有姓名品項＋去重）→ `backfillDafaPackages`（共用 `dafaForecastPayload`）→ 結算訊息加「已補預報 N 筆」→ master `70d1eb5` / gh-pages `b79e494`，blob 一致
-- 之前 d23b702 的逆向補入已還原（`232b044`），改以補預報取代
 
 ## 🕐 最後更新
 
-- 時間：2026-09-10
+- 時間：2026-11-02
 - 更新者：opencode @ 均均
-- Git push：✅ 已推（master 70d1eb5、gh-pages b79e494）
+- Git push：⏳ 待推（master 工作區已改，尚未 commit）
 - L3 Obsidian：❌（vault 在 D:\ObsidianVault，僅 welcome.md）

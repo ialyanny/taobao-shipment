@@ -28,6 +28,14 @@
 - [x] 大發同步：物品欄空白時自動從系統 records 補入同單號品項（已存在分支逆向補入，`rec.item` 有值且大發空白 → `update.item_name`）→ `d23b702` → **已還原** `232b044`（改做補預報）
 - [x] 大發同步：**補預報**——大發已有單號但物品空白、且系統有姓名品項時，自動推預報（`backfillDafaPackages`，`save` 原地更新不重複；YT8898714396181 實測驗證）→ `70d1eb5`；預報單價 0/空白/無效一律送 5 → `dcb5311`；補預報條件擴大為品項空白**或單價 0/空白**（9823140468352 案例）→ `030bea2`
   - 背景：系統給家人朋友同事用，金額 0 表示沒用親情卡代付；**系統原值保留**（方便對帳），僅送大發申報時 0/空白改 5
+- [x] 大發對接實測除錯（2026-11-02，唯讀驗證，未送任何預報）：
+  - **分頁 off-by-one（真 bug）**：大發 `pageNum` 是 **1 起算**（`pageNum=0` 與 `1` 回同一頁），舊碼從 0 開始 → 第一頁重複、**最後一頁永遠抓不到**（實測會少 76 筆，2021-11～2023-08 的舊包裹）。現改為 1 起算＋以 `id` 去重＋`maxPage` 上限
+  - **已集運包裹不再回推大發（真 bug）**：`toForecast` 原本只濾 `name && item`，已入批次（`batchId != null`）與已到貨的包裹仍會被預報。現改為 `name && item && batchId == null && !arrived`
+  - **推送前逐一確認單號**：新增 `dafaFindPackage(no)`（`query/page-list` + `firstWaybillNo` 過濾，任何狀態都算），大發已有就跳過（`skipped`），查詢失敗也跳過避免誤推。因此不再需要抓全部 4000+ 筆比對（原本每次同步 21 次請求）
+  - **補預報保留大發原備註**：`dafaForecastPayload(r, preferRemark)`，優先沿用大發 `customerRemark`，不再被系統姓名覆蓋
+  - **補預報不再要求姓名**：只要系統 `rec.item` 有值就補（待認領也可補品項）
+  - 實測數據（2026-11-02）：大發總 4076 筆（900 已發運 3986、500 揀貨完成 5、990 取消 3、130 中轉上架 2、700 裝箱完成 2、997 銷毀 1、110 預報入庫 1）；倉內僅 3 筆；系統 56 筆（54 已集運、2 待集運）
+
 
 ## 待辦 🚧
 
@@ -49,6 +57,9 @@
 
 - 大發帳號：`郭武昌168` / `123456`，shopId `896115513910222848`；倉庫 **`TMYT-PT`** 廈門漳州倉
 - 大發 API：登入 `POST /siteapi/collectionSite/mall/portal/auth/login`（token 在 response header `authorization`）、查包裹 `POST /member-package/query/page-list`、預報 `POST /member-package/save?untransfer=true`、照片 `POST /member-package/queryImages`、倉庫 `TMYT-PT`
+- **大發分頁 `pageNum` 為 1 起算**（`0` 與 `1` 回同一頁）；`pageSize` 上限可用 200；`query/page-list` 支援 `firstWaybillNo` 精準查單筆（跨所有狀態）；狀態碼：110 預報入庫、120 已入庫、130 中轉上架、500 揀貨完成、700 裝箱完成、900 已發運、990 取消、997 銷毀
+- **大發刪除包裹 API**：`POST /member-package/remove`，body `{"ids":["<memberPackageId>"]}`（`ids` 才有效，`param`／`id` 會回「失败」）；`memberPackageId` 取自 `query/page-list` 的 `id`
+- 大發 API 有開 CORS（`access-control-allow-origin` 回 GitHub Pages 網域），瀏覽器可直連
 - Supabase：ref `nutkocotbncqxgvjkfxi`，records 表欄位為 snake_case（`order_no`）；系統內 JS 用 camelCase，靠 `recRow()` 轉換
 - 使用者：`['俊賢','榮吉','小惠','Hebe','弟','妹','育源','武昌','曉君']`；管理員 `['武昌','曉君']`；`USER_KEY='ts_user'`
 - 部署：master 與 gh-pages 無共同歷史；`git checkout master -- <files>` 同步→commit→push；用 `git rev-parse master:<f>` 比對 blob
