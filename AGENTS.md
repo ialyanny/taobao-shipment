@@ -15,6 +15,7 @@
 ## 已完成 ✅
 
 - [x] 基礎系統：登入（`ts_user` localStorage）、包裹登錄、待認領、批次、到貨核對、列印單
+- [x] **人員帳號改存 Supabase＋後台管理**（2026-11-05）：前端不再有任何密碼（舊 `USER_PASSWORDS` 已移除）；`app_users`（bcrypt）/`app_sessions`（token 180 天）＋ RPC（`supabase-migration-app-users.sql`）；登入畫面姓名從 `app_list_names()` 讀；「後台管理」分頁可新增人員、設定/重設密碼、改名（連同 records.name）、設/取消管理員、停用/啟用、排序、刪除；每人可「修改密碼」；連錯 5 次鎖 5 分鐘；至少保留一位管理員、不能停用/刪除自己
 - [x] 大發登入＋一鍵同步（拉：重量/到貨/備註；推：預報 `member-package/save`）→ commit `3793b2e`
 - [x] 大發照片同步（`queryImages`，縮圖＋燈箱）→ `066cb0e`；燈箱加旋轉/放大/縮小/重置 → `bacdd1a`；放大後可拖曳平移、工具列固定（避免圖片蓋住按鈕無法操作）→ `08d4b7c`；手機保留原生雙指縮放（放大/縮小鈕＋拖曳僅桌機）→ `9359492`；手機隱藏整排工具列、完全回到原樣 → `12b6640`；桌機滾輪縮放（0.25 階、0.5～4 倍）→ `b2c8ba3`
 - [x] 同步優化：照片只查無照片/簽名7天內到期單＋同單去重（`photoUrlsFresh`）；待認領自動帶入大發品項；matched 去重計數 → `8613545`
@@ -37,7 +38,18 @@
   - 實測數據（2026-11-02）：大發總 4076 筆（900 已發運 3986、500 揀貨完成 5、990 取消 3、130 中轉上架 2、700 裝箱完成 2、997 銷毀 1、110 預報入庫 1）；倉內僅 3 筆；系統 56 筆（54 已集運、2 待集運）
 
 
+- [x] Bug 修正與順暢度（2026-11-05）：
+  - 勾到貨／全數到貨沒有寫入 `arrived_at` → 重新整理後到貨時間消失，且沒有集運倉到貨日的包裹會顯示「未到貨」。現在所有到貨／退回動作都同步 `arrived_at`，狀態以 `arrived` 為優先
+  - 批次名稱用 `batches.length + 1` 會撞號（刪掉舊批次後）→ 改為接續最大號 `nextBatchName()`
+  - `importTbOrders` 呼叫不存在的分頁 `switchTab('pending')` → 改 `register`
+  - 一般使用者不能刪除已入批次的包裹；批次刪除改成一次 `.in()` 請求
+  - 輪詢／即時更新：資料沒變不重畫（`dataSig`）；正在輸入時延後重畫（備註打到一半不會被蓋掉）；畫面在背景不輪詢、回前景立即更新；`fetchAll` 三張表並行
+  - Esc 關閉視窗／燈箱；`sw.js` cache → v9
+
 ## 待辦 🚧
+
+- [ ] **安全性（下一步）**：`records`／`batches`／`settings` 仍是 `allow all` RLS，任何拿到 anon key 的人（repo 是公開的）都能讀寫刪；`settings.dafa_pass` 也讀得到。建議改成所有寫入都走需要 token 的 RPC，或改用 Supabase Auth
+- [ ] 舊密碼與大發帳密曾出現在公開 repo 歷史中：家人登入後各自「修改密碼」；大發密碼建議到大發網站更換後在系統「儲存帳號」
 
 - [ ] （新 session 持續開發的起點，見 handoff.md）
 - [ ] 「采蕨」包裹確認：2026-08-15 查 Supabase records（order_no/name/item/remark）皆無此資料，應已不在系統；若大發倉庫端仍有測試包裹，下次 syncDafa 可能再被推播進待認領，屆時再處理
@@ -47,7 +59,8 @@
 ## 資料夾結構
 
 - `index.html`：主系統（單檔 PWA，約 2300+ 行；包裹申報為單一表單，無淘寶導入）
-- `sw.js`：Service Worker（v7，APP_SHELL 不含 bookmarklet）
+- `sw.js`：Service Worker（v9）
+- `supabase-migration-app-users.sql`：人員帳號與後台管理（人員初始資料 SQL 含密碼，**不放 repo**）
 - `manifest.webmanifest` / `icon-192.png` / `icon-512.png` / `apple-touch-icon.png`：PWA 檔案
 - `code.gs` / `supabase-*.sql`：AppScript 與 Supabase 遷移腳本
 - `count_records.ps1`：單號統計腳本
@@ -55,13 +68,15 @@
 
 ## 關鍵架構資訊
 
-- 大發帳號：`郭武昌168` / `123456`，shopId `896115513910222848`；倉庫 **`TMYT-PT`** 廈門漳州倉
+- 大發帳號密碼：存在 Supabase `settings`（`dafa_user` / `dafa_pass`），**不要寫進 repo（repo 是公開的）**；shopId `896115513910222848`；倉庫 **`TMYT-PT`** 廈門漳州倉
 - 大發 API：登入 `POST /siteapi/collectionSite/mall/portal/auth/login`（token 在 response header `authorization`）、查包裹 `POST /member-package/query/page-list`、預報 `POST /member-package/save?untransfer=true`、照片 `POST /member-package/queryImages`、倉庫 `TMYT-PT`
 - **大發分頁 `pageNum` 為 1 起算**（`0` 與 `1` 回同一頁）；`pageSize` 上限可用 200；`query/page-list` 支援 `firstWaybillNo` 精準查單筆（跨所有狀態）；狀態碼：110 預報入庫、120 已入庫、130 中轉上架、500 揀貨完成、700 裝箱完成、900 已發運、990 取消、997 銷毀
 - **大發刪除包裹 API**：`POST /member-package/remove`，body `{"ids":["<memberPackageId>"]}`（`ids` 才有效，`param`／`id` 會回「失败」）；`memberPackageId` 取自 `query/page-list` 的 `id`
 - 大發 API 有開 CORS（`access-control-allow-origin` 回 GitHub Pages 網域），瀏覽器可直連
 - Supabase：ref `nutkocotbncqxgvjkfxi`，records 表欄位為 snake_case（`order_no`）；系統內 JS 用 camelCase，靠 `recRow()` 轉換
-- 使用者：`['俊賢','榮吉','小惠','Hebe','弟','妹','育源','武昌','曉君']`；管理員 `['武昌','曉君']`；`USER_KEY='ts_user'`
+- 使用者：存在 Supabase `app_users`（後台管理分頁維護）；初始為 俊賢、榮吉、小惠、Hebe、弟、妹、育源、武昌、曉君，管理員 武昌、曉君；`DEFAULT_NAMES` 只在連不上資料庫且無快取時顯示
+- 登入：`USER_KEY='ts_user'` 存 `{name, admin, token}`；啟動時 `app_session(token)` 背景驗證（失效自動登出、同步管理員權限）；人員清單快取 `ts_staff_v1`
+- 人員 RPC：`app_list_names`、`app_login`（失敗回 `{error}` 不 raise，避免錯誤次數被 rollback）、`app_session`、`app_logout`、`app_change_my_password`、`app_list_users`、`app_add_user`、`app_set_password`、`app_update_user`、`app_rename_user`、`app_move_user`、`app_delete_user`；`app_users`/`app_sessions` 開 RLS 無 policy，前端只能透過 RPC 存取
 - 部署：master 與 gh-pages 無共同歷史；`git checkout master -- <files>` 同步→commit→push；用 `git rev-parse master:<f>` 比對 blob
 
 ## 注意事項 ⚠️
