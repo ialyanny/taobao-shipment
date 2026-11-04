@@ -469,9 +469,13 @@
 
   <div class="login-mask" id="claimOverlay" style="display:none">
     <div class="login-card">
-      <h2>認領包裹</h2>
-      <p>選擇下列包裹，輸入品項與金額即可認領到你的名下。</p>
+      <h2 id="claimTitle">認領包裹</h2>
+      <p id="claimHint">選擇下列包裹，輸入品項與金額即可認領到你的名下。</p>
       <div id="claimOrderSelect"></div>
+      <div class="field" id="claimNameField" style="margin-top:12px;display:none;">
+        <label>這個包裹是誰的</label>
+        <div class="name-btns" id="claimNameBtns"></div>
+      </div>
       <div class="field" style="margin-top:12px;">
         <label>品項</label>
         <input type="text" id="claimItem" placeholder="例如 手機殼" autocomplete="off">
@@ -2331,7 +2335,7 @@
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn-sm btn-green';
-            btn.textContent = '選擇並輸入品項金額';
+            btn.textContent = isAdmin() ? '指定給…' : '選擇並輸入品項金額';
             btn.addEventListener('click', function () {
               openClaimModal(r);
             });
@@ -2409,18 +2413,45 @@
         renderAll();
         showToast('已修改：' + name + ' — ' + orderNo);
       }
+      // 管理員：可直接指定包裹是誰的（品項必填、金額可留空）；一般使用者：認領到自己名下
+      var claimName = '';
+      function renderClaimNames() {
+        var box = $('claimNameBtns');
+        box.innerHTML = '';
+        staffNames().forEach(function (n) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'name-btn' + (claimName === n ? ' active' : '');
+          b.textContent = n;
+          b.addEventListener('click', function () { claimName = n; $('claimError').textContent = ''; renderClaimNames(); });
+          box.appendChild(b);
+        });
+      }
       function openClaimModal(r) {
         claimTarget = r;
-        $('claimItem').value = '';
-        $('claimAmount').value = '';
+        var admin = isAdmin();
+        claimName = admin ? '' : myName();
+        $('claimItem').value = r.item || '';
+        $('claimAmount').value = r.amount || '';
         $('claimError').textContent = '';
         var opts = pendingRecords().map(function (p) {
           return '<option value="' + esc(p.id) + '">' + esc(p.orderNo) + '</option>';
         }).join('');
         $('claimOrderSelect').innerHTML = '<label>選擇包裹</label><select id="claimOrder">' + opts + '</select>';
         $('claimOrder').value = r.id;
+        $('claimOrder').addEventListener('change', function () {
+          var x = findRec(this.value);
+          if (x) { $('claimItem').value = x.item || ''; $('claimAmount').value = x.amount || ''; }
+        });
+        $('claimTitle').textContent = admin ? '指定包裹給…' : '認領包裹';
+        $('claimHint').textContent = admin
+          ? '選擇這個包裹是誰的，填好品項後就會出現在他的包裹清單。金額不知道可以先留空，之後再補。'
+          : '選擇下列包裹，輸入品項與金額即可認領到你的名下。';
+        $('btnClaimOk').textContent = admin ? '確認指定' : '確認認領';
+        $('claimNameField').style.display = admin ? '' : 'none';
+        if (admin) renderClaimNames();
         $('claimOverlay').style.display = 'flex';
-        $('claimItem').focus();
+        if (!admin) $('claimItem').focus();
       }
       function doClaim() {
         var sel = $('claimOrder');
@@ -2428,17 +2459,21 @@
         var r = id ? findRec(id) : claimTarget;
         var err = $('claimError');
         if (!r) { err.textContent = '找不到這筆包裹'; return; }
+        var admin = isAdmin();
+        var name = admin ? claimName : myName();
         var item = $('claimItem').value.trim();
         var amount = $('claimAmount').value.trim();
-        if (!item || !amount) { err.textContent = '請填寫品項與金額'; return; }
-        r.name = myName();
+        if (!name) { err.textContent = '請選擇這個包裹是誰的'; return; }
+        if (!item) { err.textContent = '請填寫品項'; return; }
+        if (!admin && !amount) { err.textContent = '請填寫品項與金額'; return; }
+        r.name = name;
         r.item = item;
         r.amount = amount;
-        persist(sb.from('records').update({ name: r.name, item: item, amount: amount }).eq('id', r.id), '同步失敗：認領包裹');
+        persist(sb.from('records').update({ name: name, item: item, amount: amount }).eq('id', r.id), '同步失敗：認領包裹');
         $('claimOverlay').style.display = 'none';
         cacheSave();
         renderAll();
-        showToast('已認領：' + r.orderNo);
+        showToast(admin ? '已指定給 ' + name + '：' + r.orderNo : '已認領：' + r.orderNo);
       }
       function pushPendingPackagesList(pkgs) {
         if (!pkgs || !pkgs.length) return 0;
