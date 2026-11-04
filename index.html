@@ -74,7 +74,7 @@
     .field { margin-bottom: 20px; }
     .field label { display: block; font-size: 16px; font-weight: 500; margin-bottom: 8px; }
     .required { color: var(--error); margin-left: 4px; }
-    input[type="text"], select {
+    input[type="text"], input[type="password"], select {
       width: 100%;
       padding: 12px 14px;
       font-size: 16px;
@@ -84,7 +84,7 @@
       background: #fff;
       transition: border .15s, box-shadow .15s;
     }
-    input[type="text"]:focus, select:focus {
+    input[type="text"]:focus, input[type="password"]:focus, select:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 2px rgba(103, 58, 183, .25);
     }
@@ -347,6 +347,7 @@
     }
     .name-btn:hover:not(:disabled) { background: #f3f0f8; }
     .name-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+    .name-btn.active:hover { background: var(--primary-dark); }
     .name-btn:disabled { opacity: .4; cursor: not-allowed; }
     .login-mask {
       position: fixed; inset: 0; background: rgba(60, 64, 67, .55);
@@ -359,6 +360,30 @@
     }
     .login-card h2 { font-size: 20px; margin-bottom: 6px; }
     .login-card p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 14px; }
+    .name-btn .lock { font-size: 11px; opacity: .55; margin-left: 4px; }
+    .login-err { color: var(--error); font-size: 14px; min-height: 20px; margin-top: 8px; }
+
+    .staff-add { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 8px; align-items: center; margin-bottom: 16px; }
+    .staff-add input[type="text"], .staff-add input[type="password"] { padding: 10px 12px; font-size: 15px; }
+    .staff-add label.chk { display: flex; gap: 6px; align-items: center; font-size: 14px; white-space: nowrap; }
+    .staff-list { display: flex; flex-direction: column; gap: 8px; }
+    .staff-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #fff;
+    }
+    .staff-row.inactive { background: #f6f6f6; opacity: .75; }
+    .staff-name { font-size: 16px; font-weight: 600; min-width: 64px; }
+    .staff-tags { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .staff-tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #f1f3f4; color: var(--muted); }
+    .staff-tag.admin { background: #fef0c7; color: #8a5a00; }
+    .staff-tag.off { background: #fdecea; color: var(--error); }
+    .staff-tag.warn { background: #fff4e5; color: var(--orange); }
+    .staff-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+    .staff-acts .btn-sm { padding: 5px 10px; }
+    @media (max-width: 640px) {
+      .staff-add { grid-template-columns: 1fr 1fr; }
+      .staff-acts { width: 100%; }
+    }
 
     .toast {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -401,11 +426,44 @@
       <h2>選擇你的姓名</h2>
       <p>登入後只會看到自己登錄的包裹與自己的統計。</p>
       <div class="name-btns" id="loginNameBtns"></div>
-      <div id="pwSection" style="display:none;margin-top:12px;">
-        <input type="password" id="userPass" placeholder="請輸入密碼" style="width:100%;padding:8px;">
-        <button type="button" id="btnLogin" class="btn-primary" style="width:100%;margin-top:8px;">登入</button>
-        <button type="button" id="btnCancelUser" style="width:100%;margin-top:8px;">取消</button>
-      </div>
+      <form id="pwSection" style="display:none;margin-top:14px;" autocomplete="on">
+        <input type="text" id="loginName" name="username" autocomplete="username" style="display:none">
+        <div class="field" style="margin-bottom:10px;">
+          <label for="userPass" id="pwLabel">密碼</label>
+          <input type="password" id="userPass" name="password" placeholder="請輸入密碼" autocomplete="current-password" inputmode="numeric">
+        </div>
+        <div class="btn-row">
+          <button type="submit" id="btnLogin" class="btn-submit">登入</button>
+          <button type="button" id="btnCancelUser" class="btn-clear">取消</button>
+        </div>
+      </form>
+      <div class="login-err" id="loginError"></div>
+    </div>
+  </div>
+
+  <div class="login-mask" id="pwOverlay" style="display:none">
+    <div class="login-card">
+      <h2 id="pwTitle">修改密碼</h2>
+      <p id="pwHint">密碼會加密保存，連管理員也看不到原本的密碼。留空代表登入時不需要密碼。</p>
+      <form id="pwForm" autocomplete="off">
+        <div class="field" id="pwOldField">
+          <label for="pwOld">目前密碼</label>
+          <input type="password" id="pwOld" autocomplete="current-password">
+        </div>
+        <div class="field">
+          <label for="pwNew">新密碼</label>
+          <input type="password" id="pwNew" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="pwNew2">再輸入一次新密碼</label>
+          <input type="password" id="pwNew2" autocomplete="new-password">
+        </div>
+        <div class="btn-row">
+          <button type="submit" class="btn-submit" id="btnPwSave">儲存密碼</button>
+          <button type="button" class="btn-clear" data-close="pwOverlay">取消</button>
+        </div>
+        <div class="error" id="pwError"></div>
+      </form>
     </div>
   </div>
 
@@ -509,6 +567,7 @@
           <button type="button" class="tab-btn active" data-tab="register">登錄包裹</button>
           <button type="button" class="tab-btn" data-tab="records">包裹總覽</button>
           <button type="button" class="tab-btn" data-tab="batches" id="batchTabBtn">集運批次</button>
+          <button type="button" class="tab-btn" data-tab="admin" id="adminTabBtn">後台管理</button>
         </nav>
       </header>
 
@@ -656,6 +715,21 @@
         </div>
       </section>
 
+      <section id="tab-admin" class="tab-panel" style="display:none">
+        <div class="card">
+          <h2 style="font-size:20px;margin-bottom:8px;">集運人員管理</h2>
+          <p class="hint">新增可以登入系統的人員並設定密碼。密碼加密保存，忘記時由管理員重設即可。停用的人員無法登入，但他的包裹資料會保留。</p>
+          <form class="staff-add" id="staffAddForm" autocomplete="off">
+            <input type="text" id="staffNewName" placeholder="姓名（例如 阿明）" maxlength="20" autocomplete="off">
+            <input type="password" id="staffNewPass" placeholder="密碼（可留空）" autocomplete="new-password">
+            <label class="chk"><input type="checkbox" id="staffNewAdmin"> 管理員</label>
+            <button type="submit" class="btn-green" style="padding:10px 18px;">新增人員</button>
+          </form>
+          <div class="error" id="staffError" style="margin:-8px 0 10px;"></div>
+          <div class="staff-list" id="staffList"><div class="empty">載入中…</div></div>
+        </div>
+      </section>
+
       <section id="tab-batches" class="tab-panel" style="display:none">
         <div class="card">
           <h2 style="font-size:20px;margin-bottom:8px;">集運批次</h2>
@@ -690,19 +764,12 @@
       var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51dGtvY290Ym5jcXhndmprZnhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NTcwMjcsImV4cCI6MjEwMTQzMzAyN30.yfvXV2dvYhS8cTLgyir-ddaVb5oqbYIDyjngINVccfE';
       var CACHE_KEY = 'ts_sync_cache_v1';
       var USER_KEY = 'ts_user';
-      var USER_PASSWORDS = {
-        '俊賢': '881',
-        '榮吉': '520',
-        '小惠': '527',
-        'Hebe': '0308',
-        '弟': '527',
-        '妹': '0203',
-        '育源': '',
-        '武昌': '1026',
-        '曉君': '1026'
-      };
-      var ADMIN_NAMES = ['武昌', '曉君'];
-      var NAMES = ['俊賢', '榮吉', '小惠', 'Hebe', '弟', '妹', '育源', '武昌', '曉君'];
+      // 人員與密碼改存在 Supabase（app_users，bcrypt 加密），前端不再保存任何密碼。
+      // DEFAULT_NAMES 只在資料庫連不上、也沒有快取時拿來顯示姓名按鈕。
+      var STAFF_KEY = 'ts_staff_v1';
+      var DEFAULT_NAMES = ['俊賢', '榮吉', '小惠', 'Hebe', '弟', '妹', '育源', '武昌', '曉君'];
+      var staff = [];        // [{ name, hasPassword }]，登入畫面與姓名按鈕用
+      var staffAdmin = [];   // 後台管理用的完整清單（管理員才拿得到）
       var PENDING_PACKAGES = [
         { orderNo: 'YT7634938001060', weight: 0.24, arrivedDate: 1785175739000, remark: '昌' },
         { orderNo: '773433868685447', weight: 0.26, arrivedDate: 1785367482000, remark: '昌' },
@@ -817,10 +884,13 @@
           if (res && res.error) showToast((failMsg || '同步失敗') + '：' + res.error.message);
         }).catch(function () { showToast(failMsg || '同步失敗'); });
       }
+      // 三張表同時抓（原本 settings 要等前兩張抓完才開始）
       function fetchAll() {
+        var settingsP = Promise.resolve(sb.from('settings').select('*')).catch(function () { return { error: true }; });
         return Promise.all([
           sb.from('records').select('*'),
-          sb.from('batches').select('*')
+          sb.from('batches').select('*'),
+          settingsP
         ]).then(function (res) {
           if (res[0].error) throw res[0].error;
           if (res[1].error) throw res[1].error;
@@ -828,14 +898,12 @@
             records: (res[0].data || []).map(recFrom),
             batches: (res[1].data || []).map(batchFrom)
           };
-          return sb.from('settings').select('*').then(function (sres) {
-            if (!sres.error) {
-              var settings = {};
-              (sres.data || []).forEach(function (s) { settings[s.key] = s.value; });
-              d.settings = settings;
-            }
-            return d;
-          }).catch(function () { return d; });
+          if (res[2] && !res[2].error) {
+            var settings = {};
+            (res[2].data || []).forEach(function (s) { settings[s.key] = s.value; });
+            d.settings = settings;
+          }
+          return d;
         });
       }
       function seedShared() {
@@ -845,15 +913,37 @@
           if (res.error) throw res.error;
         });
       }
+      // 每 15 秒輪詢＋即時通知都會呼叫這裡。資料沒變就不重畫（避免畫面閃動、捲動跳回），
+      // 使用者正在輸入時先不重畫（避免打到一半的備註被蓋掉），離開輸入框後再補畫。
+      var lastDataSig = '';
+      var renderPending_ = false;
+      function dataSig(d) {
+        try { return JSON.stringify([d.records, d.batches, d.settings && d.settings.notice]); } catch (e) { return String(Math.random()); }
+      }
+      function isTyping() {
+        var a = document.activeElement;
+        if (!a || !a.closest) return false;
+        if (!/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return false;
+        if (a.tagName === 'INPUT' && /^(checkbox|radio|button|submit|file)$/i.test(a.type)) return false;
+        return !!a.closest('#app');
+      }
+      function renderSoon() {
+        if (isTyping()) { renderPending_ = true; return; }
+        renderPending_ = false;
+        renderAll();
+      }
       function applyData(d) {
+        var sig = dataSig(d);
         records = d.records;
         batches = d.batches;
         if (d.settings && d.settings.notice) noticeText = d.settings.notice;
         if (d.settings && d.settings.dafa_user) dafaUser = d.settings.dafa_user;
         if (d.settings && d.settings.dafa_pass) dafaPass = d.settings.dafa_pass;
-        cacheSave();
         setSync('online');
-        renderAll();
+        if (sig === lastDataSig) return;
+        lastDataSig = sig;
+        cacheSave();
+        renderSoon();
       }
       function makeOfflineSb() {
         var q = {
@@ -868,16 +958,26 @@
           onConflict: function () { return q; },
           then: function (a, b) { return Promise.resolve({ error: { message: '離線模式，未同步' }, data: null }).then(a, b); }
         };
-        return { from: function () { return q; } };
+        return {
+          from: function () { return q; },
+          rpc: function () { return Promise.resolve({ error: { message: '目前離線，無法連線資料庫' }, data: null }); }
+        };
       }
-      function loadShared() {
+      function initSb() {
+        if (sb) return;
         if (typeof supabase === 'undefined') {
           sb = makeOfflineSb();
           setSync('offline');
-          showToast('缺少 Supabase 設定，顯示本機資料');
           return;
         }
         sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+      function loadShared() {
+        initSb();
+        if (!sb.channel) {
+          showToast('無法載入資料庫元件，顯示本機資料');
+          return;
+        }
         fetchAll().then(function (d) {
           if (!d.records.length && !d.batches.length) {
             return seedShared().then(function () { return fetchAll(); });
@@ -892,7 +992,7 @@
         });
       }
       function refreshQuiet() {
-        if (!sb) return;
+        if (!sb || !sb.channel || !currentUser) return;
         clearTimeout(syncTimer);
         syncTimer = setTimeout(function () {
           fetchAll().then(applyData).catch(function () { setSync('offline'); });
@@ -906,7 +1006,10 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'batches' }, function () { refreshQuiet(); })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, function () { refreshQuiet(); })
           .subscribe();
-        setInterval(function () { refreshQuiet(); }, 15000);
+        // 畫面在背景（切到別的 App／分頁）時不輪詢，回到前景立刻更新一次
+        setInterval(function () { if (!document.hidden) refreshQuiet(); }, 15000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) refreshQuiet(); });
+        window.addEventListener('online', function () { refreshQuiet(); });
       }
       function replaceAllRemote() {
         if (!sb) return;
@@ -943,90 +1046,161 @@
         return records.filter(function (r) { return r.name === n; });
       }
       function loadUser() {
-        try { return JSON.parse(localStorage.getItem(USER_KEY)) || null; } catch (e) { return null; }
+        try {
+          var u = JSON.parse(localStorage.getItem(USER_KEY)) || null;
+          // 舊版登入資料沒有 token（密碼曾寫在前端），一律請使用者重新登入
+          return u && u.token ? u : null;
+        } catch (e) { return null; }
       }
       function saveUser() {
-        try { localStorage.setItem(USER_KEY, JSON.stringify(currentUser)); } catch (e) {}
+        try { localStorage.setItem(USER_KEY, JSON.stringify({ name: currentUser.name, admin: currentUser.admin, token: currentUser.token })); } catch (e) {}
+      }
+      function staffNames() {
+        var list = staff.length ? staff.map(function (s) { return s.name; }) : DEFAULT_NAMES.slice();
+        return list;
+      }
+      function loadStaffCache() {
+        try { var a = JSON.parse(localStorage.getItem(STAFF_KEY)); if (Array.isArray(a)) staff = a; } catch (e) {}
+      }
+      // 呼叫 Supabase RPC；把 PostgREST 的錯誤統一轉成 Error（message 為中文說明）
+      function rpc(fn, args) {
+        if (!sb || !sb.rpc) return Promise.reject(new Error('無法連線資料庫'));
+        return sb.rpc(fn, args || {}).then(function (res) {
+          if (res.error) {
+            var m = res.error.message || '資料庫錯誤';
+            if (res.error.code === 'PGRST202' || /Could not find the function/i.test(m)) {
+              m = '資料庫尚未安裝人員管理功能（請先執行 supabase-migration-app-users.sql）';
+            }
+            var err = new Error(m);
+            err.code = res.error.code;
+            throw err;
+          }
+          return res.data;
+        });
+      }
+      function isSessionError(e) { return e && (e.code === 'P0401' || /登入已過期/.test(e.message || '')); }
+      function handleRpcError(e, prefix) {
+        if (isSessionError(e)) {
+          showToast('登入已過期，請重新登入');
+          logout(true);
+          return;
+        }
+        showToast((prefix ? prefix + '：' : '') + (e && e.message ? e.message : e));
+      }
+      function refreshStaff() {
+        return rpc('app_list_names').then(function (rows) {
+          staff = (rows || []).map(function (r) { return { name: r.name, hasPassword: !!r.has_password }; });
+          try { localStorage.setItem(STAFF_KEY, JSON.stringify(staff)); } catch (e) {}
+          if ($('loginOverlay').style.display !== 'none' && !selectedUserName) renderLogin();
+          if (currentUser) renderNameList();
+          return staff;
+        });
       }
       function renderUserBar() {
         var bar = $('userBar');
         if (!currentUser) { bar.innerHTML = ''; return; }
         bar.innerHTML = '目前使用者：<b>' + esc(currentUser.name) + '</b>'
           + (currentUser.admin ? '<span class="user-admin-badge">管理員</span>' : '')
-          + '<button type="button" class="btn-sm" id="btnSwitchUser" style="margin-left:6px;">切換使用者</button>';
-        var sw = $('btnSwitchUser');
-        if (sw) sw.addEventListener('click', logout);
+          + '<button type="button" class="btn-sm" id="btnMyPassword" style="margin-left:6px;">修改密碼</button>'
+          + '<button type="button" class="btn-sm" id="btnSwitchUser">登出 / 切換使用者</button>';
+        $('btnSwitchUser').addEventListener('click', function () { logout(false); });
+        $('btnMyPassword').addEventListener('click', function () { openPwModal(null); });
       }
       var selectedUserName = null;
+      var loginBusy = false;
       function renderLogin() {
         var box = $('loginNameBtns');
         box.innerHTML = '';
-        var pwSection = $('pwSection');
-        if (pwSection) pwSection.style.display = 'none';
-        var pass = $('userPass');
-        if (pass) pass.value = '';
+        $('pwSection').style.display = 'none';
+        $('userPass').value = '';
+        $('loginError').textContent = '';
         selectedUserName = null;
-        NAMES.forEach(function (n) {
+        var list = staff.length ? staff : DEFAULT_NAMES.map(function (n) { return { name: n, hasPassword: true }; });
+        list.forEach(function (st) {
           var b = document.createElement('button');
           b.type = 'button';
           b.className = 'name-btn';
-          b.textContent = n;
-          b.addEventListener('click', function () {
-            selectedUserName = n;
-            var pwSection = $('pwSection');
-            var pass = $('userPass');
-            if (pwSection) pwSection.style.display = 'block';
-            if (pass) { pass.value = ''; pass.focus(); }
-            // If no password required, login immediately
-            var requiredPass = USER_PASSWORDS[n] || '';
-            if (!requiredPass) {
-              doLogin();
-            }
-          });
+          b.innerHTML = esc(st.name) + (st.hasPassword ? '<span class="lock">🔒</span>' : '');
+          b.addEventListener('click', function () { pickLoginName(st, b); });
           box.appendChild(b);
         });
         $('loginOverlay').style.display = 'flex';
       }
-      function doLogin() {
-        if (!selectedUserName) return;
-        var pass = $('userPass');
-        var entered = pass ? pass.value : '';
-        var requiredPass = USER_PASSWORDS[selectedUserName] || '';
-        if (requiredPass && entered !== requiredPass) {
-          showToast('密碼錯誤，請重新輸入');
-          return;
-        }
-        var isAdmin = (ADMIN_NAMES.indexOf(selectedUserName) >= 0) && (entered === requiredPass);
-        // Reset UI
-         var pwSection = $('pwSection');
-        if (pwSection) pwSection.style.display = 'none';
-        if (pass) pass.value = '';
-        var name = selectedUserName;
-        selectedUserName = null;
-        $('loginOverlay').style.display = 'none';
-        chooseUser(name, isAdmin);
+      function pickLoginName(st, btn) {
+        if (loginBusy) return;
+        selectedUserName = st.name;
+        $('loginError').textContent = '';
+        document.querySelectorAll('#loginNameBtns .name-btn').forEach(function (x) { x.classList.toggle('active', x === btn); });
+        if (!st.hasPassword) { doLogin(); return; }
+        $('loginName').value = st.name;
+        $('pwLabel').textContent = st.name + ' 的密碼';
+        $('pwSection').style.display = 'block';
+        $('userPass').value = '';
+        $('userPass').focus();
       }
-      function chooseUser(name, admin) {
-        currentUser = { name: name, admin: admin };
+      function doLogin() {
+        if (!selectedUserName || loginBusy) return;
+        var entered = $('userPass').value;
+        loginBusy = true;
+        $('btnLogin').disabled = true;
+        $('loginError').textContent = '登入中…';
+        rpc('app_login', { p_name: selectedUserName, p_password: entered }).then(function (res) {
+          if (!res || res.error || !res.token) {
+            $('loginError').textContent = (res && res.error) || '登入失敗';
+            $('userPass').select();
+            return;
+          }
+          $('pwSection').style.display = 'none';
+          $('userPass').value = '';
+          $('loginError').textContent = '';
+          selectedUserName = null;
+          chooseUser(res.name, !!res.is_admin, res.token);
+        }).catch(function (e) {
+          $('loginError').textContent = e.message || '登入失敗';
+        }).then(function () {
+          loginBusy = false;
+          $('btnLogin').disabled = false;
+        });
+      }
+      function chooseUser(name, admin, token) {
+        currentUser = { name: name, admin: admin, token: token };
         saveUser();
         selected = {};
         currentFilter = 'all';
         formName = '';
         $('loginOverlay').style.display = 'none';
         renderUserBar();
-        if (!admin && currentTab === 'batches') switchTab('register');
-        renderAll();
+        if (!admin && (currentTab === 'batches' || currentTab === 'admin')) currentTab = 'register';
+        switchTab(currentTab);
         startApp();
         showToast((admin ? '管理員模式，' : '') + '目前使用者：' + name);
       }
-      function logout() {
+      // 背景確認登入憑證仍有效，並同步最新的管理員權限
+      function verifySession() {
+        if (!currentUser || !currentUser.token) return;
+        rpc('app_session', { p_token: currentUser.token }).then(function (res) {
+          if (!res || !currentUser) return;
+          var changed = res.is_admin !== currentUser.admin || res.name !== currentUser.name;
+          currentUser.admin = !!res.is_admin;
+          currentUser.name = res.name;
+          saveUser();
+          if (changed) { renderUserBar(); switchTab(currentTab); }
+        }).catch(function (e) {
+          if (isSessionError(e)) { showToast('登入已過期，請重新登入'); logout(true); }
+        });
+      }
+      function logout(silent) {
+        if (currentUser && currentUser.token && !silent) {
+          rpc('app_logout', { p_token: currentUser.token }).catch(function () {});
+        }
         currentUser = null;
         formName = '';
+        staffAdmin = [];
         try { localStorage.removeItem(USER_KEY); } catch (e) {}
-        var ov = $('editOverlay');
-        if (ov) ov.style.display = 'none';
+        closeAllOverlays();
         renderUserBar();
         renderLogin();
+        refreshStaff().catch(function () {});
       }
       function startApp() {
         if (started) return;
@@ -1034,12 +1208,173 @@
         loadShared();
         subscribe();
       }
+
+      // ── 修改密碼（自己）／重設密碼（管理員替別人） ──
+      var pwTarget = null;
+      function openPwModal(targetName) {
+        pwTarget = targetName;
+        var self = !targetName;
+        $('pwTitle').textContent = self ? '修改我的密碼' : '重設「' + targetName + '」的密碼';
+        $('pwHint').textContent = self
+          ? '密碼會加密保存，連管理員也看不到。新密碼留空代表登入時不需要密碼。'
+          : '設定後請把新密碼告訴對方。留空代表登入時不需要密碼。對方其他裝置上的登入會被登出。';
+        $('pwOldField').style.display = self ? '' : 'none';
+        $('pwOld').value = ''; $('pwNew').value = ''; $('pwNew2').value = '';
+        $('pwError').textContent = '';
+        $('pwOverlay').style.display = 'flex';
+        (self ? $('pwOld') : $('pwNew')).focus();
+      }
+      function savePw() {
+        var err = $('pwError');
+        var nw = $('pwNew').value, nw2 = $('pwNew2').value;
+        if (nw !== nw2) { err.textContent = '兩次輸入的新密碼不一樣'; return; }
+        if (nw && nw.length < 3) { err.textContent = '密碼至少 3 個字元（或留空不設密碼）'; return; }
+        var p = pwTarget
+          ? rpc('app_set_password', { p_token: currentUser.token, p_name: pwTarget, p_password: nw })
+          : rpc('app_change_my_password', { p_token: currentUser.token, p_old: $('pwOld').value, p_new: nw });
+        $('btnPwSave').disabled = true;
+        err.textContent = '儲存中…';
+        p.then(function () {
+          $('pwOverlay').style.display = 'none';
+          showToast(pwTarget ? '已重設「' + pwTarget + '」的密碼' : '密碼已更新');
+          refreshStaff().catch(function () {});
+          if (pwTarget) loadStaffAdmin();
+        }).catch(function (e) {
+          if (isSessionError(e) && pwTarget) { handleRpcError(e); return; }
+          err.textContent = e.message || '儲存失敗';
+        }).then(function () { $('btnPwSave').disabled = false; });
+      }
+
+      // ── 後台管理：集運人員 ──
+      var staffLoading = false;
+      function loadStaffAdmin() {
+        if (!isAdmin() || staffLoading) return;
+        staffLoading = true;
+        rpc('app_list_users', { p_token: currentUser.token }).then(function (rows) {
+          staffAdmin = rows || [];
+          renderStaffAdmin();
+        }).catch(function (e) {
+          $('staffList').innerHTML = '<div class="error">' + esc(e.message || '讀取失敗') + '</div>';
+          if (isSessionError(e)) handleRpcError(e);
+        }).then(function () { staffLoading = false; });
+      }
+      function staffCounts() {
+        var c = {};
+        records.forEach(function (r) {
+          if (!r.name) return;
+          var x = c[r.name] || (c[r.name] = { total: 0, pending: 0 });
+          x.total++;
+          if (r.batchId == null) x.pending++;
+        });
+        return c;
+      }
+      function renderStaffAdmin() {
+        var box = $('staffList');
+        if (!box) return;
+        if (!staffAdmin.length) { box.innerHTML = '<div class="empty">尚無人員</div>'; return; }
+        var counts = staffCounts();
+        var activeList = staffAdmin.filter(function (u) { return u.active; });
+        box.innerHTML = '';
+        staffAdmin.forEach(function (u) {
+          var me = currentUser && u.name === currentUser.name;
+          var cnt = counts[u.name] || { total: 0, pending: 0 };
+          var idx = activeList.indexOf(u);
+          var row = document.createElement('div');
+          row.className = 'staff-row' + (u.active ? '' : ' inactive');
+          row.innerHTML = '<div class="staff-name">' + esc(u.name) + (me ? '（我）' : '') + '</div>'
+            + '<div class="staff-tags">'
+            + (u.is_admin ? '<span class="staff-tag admin">管理員</span>' : '<span class="staff-tag">一般</span>')
+            + (u.has_password ? '<span class="staff-tag">已設密碼</span>' : '<span class="staff-tag warn">未設密碼</span>')
+            + (u.active ? '' : '<span class="staff-tag off">已停用</span>')
+            + (u.locked ? '<span class="staff-tag off">輸錯太多次，暫時鎖定</span>' : '')
+            + '<span class="staff-tag">包裹 ' + cnt.total + ' 筆（待集運 ' + cnt.pending + '）</span>'
+            + '</div>'
+            + '<div class="staff-acts">'
+            + (u.active && idx > 0 ? '<button type="button" class="btn-sm" data-sa="up" title="往前移">↑</button>' : '')
+            + (u.active && idx >= 0 && idx < activeList.length - 1 ? '<button type="button" class="btn-sm" data-sa="down" title="往後移">↓</button>' : '')
+            + '<button type="button" class="btn-sm" data-sa="pw">' + (u.has_password ? '重設密碼' : '設定密碼') + '</button>'
+            + '<button type="button" class="btn-sm" data-sa="rename">改名</button>'
+            + (me ? '' : '<button type="button" class="btn-sm" data-sa="admin">' + (u.is_admin ? '取消管理員' : '設為管理員') + '</button>')
+            + (me ? '' : '<button type="button" class="btn-sm' + (u.active ? ' btn-danger' : '') + '" data-sa="active">' + (u.active ? '停用' : '啟用') + '</button>')
+            + (me ? '' : '<button type="button" class="btn-sm btn-danger" data-sa="delete">刪除</button>')
+            + '</div>';
+          row.querySelectorAll('[data-sa]').forEach(function (btn) {
+            btn.addEventListener('click', function () { staffAction(u, btn.dataset.sa, cnt); });
+          });
+          box.appendChild(row);
+        });
+      }
+      function staffDone(msg) {
+        showToast(msg);
+        loadStaffAdmin();
+        refreshStaff().catch(function () {});
+      }
+      function staffAction(u, act, cnt) {
+        var t = currentUser.token;
+        if (act === 'pw') { openPwModal(u.name); return; }
+        var p;
+        if (act === 'up' || act === 'down') {
+          p = rpc('app_move_user', { p_token: t, p_name: u.name, p_dir: act === 'up' ? -1 : 1 });
+          p.then(function () { loadStaffAdmin(); refreshStaff().catch(function () {}); }, function (e) { handleRpcError(e, '排序失敗'); });
+          return;
+        }
+        if (act === 'rename') {
+          var nn = prompt('把「' + u.name + '」改名為：' + (cnt.total ? '\n（他的 ' + cnt.total + ' 筆包裹會一起改到新名字）' : ''), u.name);
+          if (nn == null) return;
+          nn = nn.trim();
+          if (!nn || nn === u.name) return;
+          p = rpc('app_rename_user', { p_token: t, p_name: u.name, p_new_name: nn }).then(function () {
+            records.forEach(function (r) { if (r.name === u.name) r.name = nn; });
+            if (currentUser.name === u.name) { currentUser.name = nn; saveUser(); renderUserBar(); }
+            if (formName === u.name) formName = nn;
+            cacheSave(); renderAll(); refreshQuiet();
+            staffDone('已改名為「' + nn + '」');
+          });
+        } else if (act === 'admin') {
+          if (!confirm(u.is_admin ? '取消「' + u.name + '」的管理員權限？' : '把「' + u.name + '」設為管理員？\n管理員可以看到所有人的包裹、建立批次、管理人員。')) return;
+          p = rpc('app_update_user', { p_token: t, p_name: u.name, p_is_admin: !u.is_admin, p_active: null })
+            .then(function () { staffDone(u.is_admin ? '已取消管理員' : '已設為管理員'); });
+        } else if (act === 'active') {
+          if (u.active && !confirm('停用「' + u.name + '」？停用後無法登入，包裹資料會保留，之後可再啟用。')) return;
+          p = rpc('app_update_user', { p_token: t, p_name: u.name, p_is_admin: null, p_active: !u.active })
+            .then(function () { staffDone(u.active ? '已停用「' + u.name + '」' : '已啟用「' + u.name + '」'); });
+        } else if (act === 'delete') {
+          var warn = cnt.total ? '\n\n他名下還有 ' + cnt.total + ' 筆包裹，刪除人員不會刪包裹，但他之後無法登入。若只是暫時不用，建議改用「停用」。' : '';
+          if (!confirm('確定刪除人員「' + u.name + '」？' + warn)) return;
+          p = rpc('app_delete_user', { p_token: t, p_name: u.name }).then(function () { staffDone('已刪除「' + u.name + '」'); });
+        }
+        if (p) p.catch(function (e) { handleRpcError(e, '操作失敗'); });
+      }
+      function addStaff(e) {
+        e.preventDefault();
+        var err = $('staffError');
+        var name = $('staffNewName').value.trim();
+        var pw = $('staffNewPass').value;
+        var admin = $('staffNewAdmin').checked;
+        err.textContent = '';
+        if (!name) { err.textContent = '請輸入姓名'; $('staffNewName').focus(); return; }
+        if (pw && pw.length < 3) { err.textContent = '密碼至少 3 個字元（或留空不設密碼）'; return; }
+        rpc('app_add_user', { p_token: currentUser.token, p_name: name, p_password: pw, p_is_admin: admin }).then(function () {
+          $('staffAddForm').reset();
+          staffDone('已新增「' + name + '」' + (pw ? '' : '（未設密碼）'));
+          $('staffNewName').focus();
+        }).catch(function (e2) {
+          if (isSessionError(e2)) { handleRpcError(e2); return; }
+          err.textContent = e2.message || '新增失敗';
+        });
+      }
+      function closeAllOverlays() {
+        ['editOverlay', 'claimOverlay', 'noticeOverlay', 'lineOverlay', 'pwOverlay'].forEach(function (id) {
+          var el = $(id); if (el) el.style.display = 'none';
+        });
+      }
       function applyView() {
         $('statsTitle').textContent = isAdmin() ? '每個人集運統計' : '我的包裹統計';
         $('filterRow').style.display = isAdmin() ? '' : 'none';
         $('backupCard').style.display = isAdmin() ? '' : 'none';
         $('dafaCard').style.display = isAdmin() ? '' : 'none';
         $('batchTabBtn').style.display = isAdmin() ? '' : 'none';
+        $('adminTabBtn').style.display = isAdmin() ? '' : 'none';
         $('selectAllTh').style.display = isAdmin() ? '' : 'none';
         $('btnCreateBatch').style.display = isAdmin() ? '' : 'none';
         $('selectedSummary').style.display = isAdmin() ? '' : 'none';
@@ -1104,23 +1439,23 @@
       }
 
       function switchTab(tab) {
-        if (tab === 'batches' && !isAdmin()) tab = 'records';
+        if ((tab === 'batches' || tab === 'admin') && !isAdmin()) tab = 'records';
         currentTab = tab;
-        ['register', 'records', 'batches'].forEach(function (t) {
+        ['register', 'records', 'batches', 'admin'].forEach(function (t) {
           $('tab-' + t).style.display = t === tab ? 'block' : 'none';
         });
         document.querySelectorAll('.tab-btn').forEach(function (b) {
           b.classList.toggle('active', b.dataset.tab === tab);
         });
         renderAll();
+        if (tab === 'admin') loadStaffAdmin();
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
       }
 
       function renderNameList() {
         var box = $('nameBtns');
-        var names = [];
-        NAMES.forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
-        records.forEach(function (r) { if (r.name && names.indexOf(r.name) === -1) names.push(r.name); });
-        names.sort();
+        var names = staffNames();
+        if (myName() && names.indexOf(myName()) === -1) names.push(myName());
         if (!isAdmin()) { formName = myName(); }
         if (isAdmin() && !formName) { formName = myName() || names[0] || ''; }
         box.innerHTML = '';
@@ -1225,10 +1560,7 @@
         var ids = Object.keys(selected);
         if (!ids.length) return;
         if (!confirm('確定刪除選中的 ' + ids.length + ' 筆包裹？此操作無法撤銷。')) return;
-        var toDelete = records.filter(function (r) { return ids.indexOf(r.id) >= 0; });
-        toDelete.forEach(function (r) {
-          persist(sb.from('records').delete().eq('id', r.id), '同步失敗：刪除包裹');
-        });
+        persist(sb.from('records').delete().in('id', ids), '同步失敗：刪除包裹');
         records = records.filter(function (r) { return ids.indexOf(r.id) === -1; });
         selected = {};
         pruneEmptyBatches();
@@ -1367,17 +1699,17 @@
           }
           var tdStatus = document.createElement('td');
           var badge = document.createElement('span');
-          if (r.arrivedDate == null && r.arrivedAt == null) {
-            badge.className = 'status-badge';
-            badge.style.background = '#f1f3f4';
-            badge.style.color = 'var(--muted)';
-            badge.textContent = '未到貨';
-          } else if (r.arrived) {
+          if (r.arrived) {
             badge.className = 'status-badge';
             badge.style.background = '#e6f4ea';
             badge.style.color = 'var(--green)';
             var d = r.arrivedAt ? fmtTime(r.arrivedAt).slice(0, 10) : (r.arrivedDate ? fmtTime(r.arrivedDate).slice(0, 10) : '');
             badge.textContent = d ? '已到貨 ' + d : '已到貨';
+          } else if (r.batchId == null && r.arrivedDate == null) {
+            badge.className = 'status-badge';
+            badge.style.background = '#f1f3f4';
+            badge.style.color = 'var(--muted)';
+            badge.textContent = '未到貨';
           } else if (r.batchId == null) {
             badge.className = 'status-badge st-pending';
             badge.textContent = '待集運';
@@ -1402,6 +1734,7 @@
           var delBtn = document.createElement('button');
           delBtn.type = 'button';
           delBtn.textContent = '刪除';
+          if (!isAdmin() && r.batchId != null) { delBtn.disabled = true; delBtn.title = '已在集運批次中，請找管理員處理'; }
           delBtn.addEventListener('click', function () {
             if (!confirm('確定刪除這筆：' + r.name + '｜' + r.orderNo + '｜' + r.item + '？')) return;
             delete selected[r.id];
@@ -1518,13 +1851,8 @@
             var r = findRec(cb.dataset.id);
             if (!r) return;
             r.arrived = cb.checked;
-            if (cb.checked) {
-              r.arrivedAt = Date.now();
-              persist(sb.from('records').update({ arrived: true }).eq('id', r.id), '同步失敗：到貨狀態');
-            } else {
-              r.arrivedAt = null;
-              persist(sb.from('records').update({ arrived: false }).eq('id', r.id), '同步失敗：到貨狀態');
-            }
+            r.arrivedAt = cb.checked ? Date.now() : null;
+            persist(sb.from('records').update({ arrived: cb.checked, arrived_at: r.arrivedAt }).eq('id', r.id), '同步失敗：到貨狀態');
             cacheSave();
             renderAll();
           });
@@ -1539,7 +1867,7 @@
               var now = Date.now();
               var ids = recs.map(function (r) { r.arrived = true; r.arrivedAt = now; return r.id; });
               if (!ids.length) { showToast('批次沒有包裹'); return; }
-              persist(sb.from('records').update({ arrived: true }).in('id', ids), '同步失敗：全數到貨');
+              persist(sb.from('records').update({ arrived: true, arrived_at: now }).in('id', ids), '同步失敗：全數到貨');
               cacheSave();
               renderAll();
               showToast('已將 ' + b.name + ' 全部標記為到貨（' + fmtTime(now) + '）');
@@ -1550,9 +1878,7 @@
               if (!arrivedRecs.length) { showToast('沒有已到貨包裹可刪除'); return; }
               if (!confirm('確定刪除「' + b.name + '」中已到貨的 ' + arrivedRecs.length + ' 筆包裹？此操作無法撤銷。')) return;
               var delIds = arrivedRecs.map(function (r) { return r.id; });
-              delIds.forEach(function (delId) {
-                persist(sb.from('records').delete().eq('id', delId), '同步失敗：刪除已到貨包裹');
-              });
+              persist(sb.from('records').delete().in('id', delIds), '同步失敗：刪除已到貨包裹');
               records = records.filter(function (r) { return delIds.indexOf(r.id) === -1; });
               var remaining = records.some(function (r) { return r.batchId === b.id; });
               if (!remaining) {
@@ -1570,7 +1896,7 @@
               var r = findRec(sel.value);
               if (r) {
                 r.batchId = b.id; r.arrived = false; r.arrivedAt = null;
-                persist(sb.from('records').update({ batch_id: b.id, arrived: false }).eq('id', r.id), '同步失敗：加入批次');
+                persist(sb.from('records').update({ batch_id: b.id, arrived: false, arrived_at: null }).eq('id', r.id), '同步失敗：加入批次');
                 cacheSave(); renderAll(); showToast('已加入批次');
               }
             }
@@ -1588,7 +1914,7 @@
         batches = batches.filter(function (x) { return x.id !== bid; });
         persist(sb.from('batches').delete().eq('id', bid), '同步失敗：刪除批次');
         if (ids.length) {
-          persist(sb.from('records').update({ batch_id: null, arrived: false }).in('id', ids), '同步失敗：退回未集運');
+          persist(sb.from('records').update({ batch_id: null, arrived: false, arrived_at: null }).in('id', ids), '同步失敗：退回未集運');
         }
         cacheSave();
         renderAll();
@@ -1788,6 +2114,14 @@
         $('lineTitle').textContent = 'LINE 到貨通知' + (b ? '｜' + b.name : '');
       }
 
+      function nextBatchName() {
+        var max = 0;
+        batches.forEach(function (b) {
+          var m = String(b.name || '').match(/集運批次\s*(\d+)/);
+          if (m) max = Math.max(max, +m[1]);
+        });
+        return '集運批次 ' + Math.max(max + 1, batches.length + 1);
+      }
       function createBatchFromSelected() {
         var ids = [];
         for (var id in selected) if (selected[id]) ids.push(id);
@@ -1798,7 +2132,7 @@
         if (!eligible.length) { showToast('請先勾選未集運的包裹'); return; }
         var batch = {
           id: 'b' + Date.now(),
-          name: '集運批次 ' + (batches.length + 1),
+          name: nextBatchName(),
           createdAt: Date.now()
         };
         batches.push(batch);
@@ -1806,7 +2140,7 @@
           if (eligible.indexOf(r.id) !== -1) { r.batchId = batch.id; r.arrived = false; r.arrivedAt = null; }
         });
         persist(sb.from('batches').insert([batchRow(batch)]), '同步失敗：建立批次');
-        persist(sb.from('records').update({ batch_id: batch.id, arrived: false }).in('id', eligible), '同步失敗：更新包裹');
+        persist(sb.from('records').update({ batch_id: batch.id, arrived: false, arrived_at: null }).in('id', eligible), '同步失敗：更新包裹');
         selected = {};
         cacheSave();
         renderAll();
@@ -2026,7 +2360,7 @@
         $('editError').textContent = '';
         var dl = $('editNameList');
         dl.innerHTML = '';
-        NAMES.forEach(function (n) {
+        staffNames().forEach(function (n) {
           var o = document.createElement('option');
           o.value = n;
           dl.appendChild(o);
@@ -2153,7 +2487,7 @@
         var batchIds = batches.map(function (b) { return b.id; });
         batches = [];
         if (ids.length) {
-          persist(sb.from('records').update({ batch_id: null, arrived: false }).in('id', ids), '同步失敗：全部退回');
+          persist(sb.from('records').update({ batch_id: null, arrived: false, arrived_at: null }).in('id', ids), '同步失敗：全部退回');
         }
         if (batchIds.length) {
           persist(sb.from('batches').delete().in('id', batchIds), '同步失敗：清空批次');
@@ -2643,7 +2977,7 @@
           if (skipped) msg += '；跳過 ' + skipped + ' 筆系統已有';
           if (noWb) msg += '；' + noWb + ' 筆無物流單號未帶入';
           showToast(msg);
-          switchTab('pending');
+          switchTab('register');
         } else {
           showToast('沒有可導入的新包裹（物流單號皆已存在或無物流單號）');
         }
@@ -2868,23 +3202,29 @@
           lbApplyView();
         }, { passive: false });
 
-        var btnLogin = $('btnLogin');
-        if (btnLogin) btnLogin.addEventListener('click', doLogin);
-
-        var passAuto = $('userPass');
-        if (passAuto) passAuto.addEventListener('input', function () {
-          if (!selectedUserName) return;
-          var requiredPass = USER_PASSWORDS[selectedUserName] || '';
-          if (requiredPass && passAuto.value === requiredPass) {
-            doLogin();
-          }
-        });
-
-        var btnCancel = $('btnCancelUser');
-        if (btnCancel) btnCancel.addEventListener('click', function () {
-          var pwSection = $('pwSection');
-          if (pwSection) pwSection.style.display = 'none';
+        $('pwSection').addEventListener('submit', function (e) { e.preventDefault(); doLogin(); });
+        $('btnCancelUser').addEventListener('click', function () {
+          $('pwSection').style.display = 'none';
+          $('loginError').textContent = '';
           selectedUserName = null;
+          document.querySelectorAll('#loginNameBtns .name-btn').forEach(function (x) { x.classList.remove('active'); });
+        });
+        $('pwForm').addEventListener('submit', function (e) { e.preventDefault(); savePw(); });
+        $('staffAddForm').addEventListener('submit', addStaff);
+        document.querySelectorAll('[data-close]').forEach(function (b) {
+          b.addEventListener('click', function () { $(b.getAttribute('data-close')).style.display = 'none'; });
+        });
+        // Esc 關閉最上層的視窗／燈箱
+        document.addEventListener('keydown', function (e) {
+          if (e.key !== 'Escape') return;
+          if ($('imgLightbox').style.display !== 'none') { closeLightbox(); return; }
+          var ids = ['pwOverlay', 'editOverlay', 'claimOverlay', 'noticeOverlay', 'lineOverlay'];
+          for (var i = 0; i < ids.length; i++) {
+            if ($(ids[i]).style.display !== 'none') {
+              if (ids[i] === 'editOverlay') closeEditModal(); else $(ids[i]).style.display = 'none';
+              return;
+            }
+          }
         });
 
         var btnClaimOk = $('btnClaimOk');
@@ -2936,7 +3276,13 @@
         var du = $('dafaUser'); if (du) du.value = dafaUser || '';
         var dp = $('dafaPass'); if (dp) dp.value = dafaPass || '';
 
+        document.addEventListener('focusout', function () {
+          setTimeout(function () { if (renderPending_ && !isTyping()) { renderPending_ = false; renderAll(); } }, 50);
+        });
+
         currentUser = loadUser();
+        loadStaffCache();
+        initSb();
 
         var c = cacheLoad();
         records = (c && Array.isArray(c.records)) ? c.records : SEED_RECORDS.map(seedMap);
@@ -2951,9 +3297,14 @@
         }
 
         if (currentUser) {
+          renderUserBar();
+          switchTab(currentTab);
           startApp();
+          verifySession();
+          refreshStaff().catch(function () {});
         } else {
           renderLogin();
+          refreshStaff().catch(function () {});
         }
       }
 
