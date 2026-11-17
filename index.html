@@ -2273,7 +2273,11 @@
       }
 
       function pendingRecords() {
-        return records.filter(function (r) { return !r.name; });
+        // 同一個單號只要已經有人認領（有姓名），就不再列進「待認領」，
+        // 避免同一個包裹同時出現在待認領與包裹列表、看起來像重複。
+        var claimed = {};
+        records.forEach(function (r) { if (r.name && r.orderNo) claimed[String(r.orderNo)] = true; });
+        return records.filter(function (r) { return !r.name && !claimed[String(r.orderNo)]; });
       }
       function pendingRemark(orderNo) {
         for (var i = 0; i < PENDING_PACKAGES.length; i++) {
@@ -2477,16 +2481,20 @@
       }
       function pushPendingPackagesList(pkgs) {
         if (!pkgs || !pkgs.length) return 0;
+        // 以系統現有資料建立去重表，且每新增一筆就同步更新 existing。
+        // 舊版沒更新 existing，同一批若出現兩次相同單號會插入兩筆重複包裹。
         var existing = {};
-        records.forEach(function (r) { existing[r.orderNo] = true; });
+        records.forEach(function (r) { if (r.orderNo) existing[String(r.orderNo)] = true; });
         var added = 0;
         pkgs.forEach(function (p) {
-          if (existing[p.orderNo]) return;
+          var no = p.orderNo ? String(p.orderNo) : '';
+          if (!no || existing[no]) return;
+          existing[no] = true;
           var rec = {
             id: 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             time: p.arrivedDate || Date.now(),
             name: '',
-            orderNo: p.orderNo,
+            orderNo: no,
             item: p.itemName || '',
             amount: '',
             batchId: null,
@@ -2496,8 +2504,23 @@
             remark: p.remark || null
           };
           records.push(rec);
-          persist(sb.from('records').insert([recRow(rec)]), '同步失敗：推播包裹');
           added++;
+          if (!sb) return;
+          // 先寫資料庫；若回 23505（單號已存在，代表別的裝置已經推播過），
+          // 把本機這筆重複資料移除，避免畫面上出現重複包裹。
+          sb.from('records').insert([recRow(rec)]).then(function (res) {
+            if (!res || !res.error) return;
+            var code = res.error.code || '';
+            var msg = res.error.message || '';
+            if (code === '23505' || /duplicate key/i.test(msg)) {
+              var idx = records.indexOf(rec);
+              if (idx !== -1) records.splice(idx, 1);
+              cacheSave();
+              renderAll();
+              return;
+            }
+            showToast('同步失敗：推播包裹：' + msg);
+          }).catch(function () { showToast('同步失敗：推播包裹'); });
         });
         cacheSave();
         renderAll();
