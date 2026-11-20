@@ -2225,6 +2225,7 @@
               var weight = cWeight >= 0 && row[cWeight] != null ? String(row[cWeight]).trim() : '';
               var arriveMs = cArrive >= 0 ? parseArrival(row[cArrive]) : null;
               var remark = cRemark >= 0 && row[cRemark] != null ? String(row[cRemark]).trim() : '';
+              if (remark && remark === String(dafaUser || '').trim()) remark = '';
 
               var rec = null;
               for (var i = 0; i < records.length; i++) {
@@ -2259,9 +2260,12 @@
               res.innerHTML = h;
               var pushBtn = $('btnPushUnmatched');
               if (pushBtn) pushBtn.addEventListener('click', function () {
-                var added = pushPendingPackagesList(unmatchedPkgs);
-                if (added) showToast('已推播 ' + added + ' 筆未登錄包裹，一般使用者可於「待認領包裹」認領');
-                else showToast('沒有新的未登錄包裹需要推播');
+                pushBtn.disabled = true;
+                refreshBeforeWrite().then(function () {
+                  var added = pushPendingPackagesList(unmatchedPkgs);
+                  if (added) showToast('已推播 ' + added + ' 筆未登錄包裹，一般使用者可於「待認領包裹」認領');
+                  else showToast('沒有新的未登錄包裹需要推播');
+                }).catch(function (e) { showToast(e.message); pushBtn.disabled = false; });
               });
             }
             showToast('匯入完成：' + matched + ' 筆成功');
@@ -2549,9 +2553,11 @@
         return added;
       }
       function pushPendingPackages() {
-        var added = pushPendingPackagesList(PENDING_PACKAGES);
-        if (added) showToast('已推播 ' + added + ' 筆未登錄包裹');
-        else showToast('沒有新的未登錄包裹需要推播');
+        refreshBeforeWrite().then(function () {
+          var added = pushPendingPackagesList(PENDING_PACKAGES);
+          if (added) showToast('已推播 ' + added + ' 筆未登錄包裹');
+          else showToast('沒有新的未登錄包裹需要推播');
+        }).catch(function (e) { showToast(e.message); });
       }
       function resetAllArrived() {
         var count = records.filter(function (r) { return r.arrived || r.batchId != null; }).length;
@@ -2787,13 +2793,35 @@
         if (isNaN(n)) return null;
         return round2(n / 1000);
       }
+      // 大發包裹沒填客戶備註時，備註欄會是大發帳號名稱（例如「郭武昌168」），不是真的備註 → 忽略
+      function dafaRemarkOf(p) {
+        var acct = String(dafaUser || '').trim();
+        var cands = [p.customerRemark, p.remark];
+        for (var i = 0; i < cands.length; i++) {
+          var v = cands[i] != null ? String(cands[i]).trim() : '';
+          if (v && v !== acct) return v;
+        }
+        return '';
+      }
+      // 推播／比對前一定先抓資料庫最新資料。
+      // 舊版直接用本機資料比對：裝置上的資料若還沒更新（剛打開、網路慢），
+      // 已存在的包裹會被當成「未登錄」再推播一次 → 同一單號出現兩筆。
+      function refreshBeforeWrite() {
+        if (!sb || !sb.channel) return Promise.reject(new Error('目前無法連線資料庫，請稍後再試'));
+        return fetchAll().then(function (d) { applyData(d); }, function () {
+          throw new Error('無法讀取資料庫最新資料，為避免重複建立包裹，已取消。請確認網路後再試');
+        });
+      }
       var dafaConsolidatedMade = [];
       function syncDafa() {
         dafaConsolidatedMade = [];
         var btn = $('btnDafaSync');
         if (btn) btn.disabled = true;
-        dafaSetState('登入中…');
-        dafaLogin().then(function () {
+        dafaSetState('讀取最新資料…');
+        refreshBeforeWrite().then(function () {
+          dafaSetState('登入中…');
+          return dafaLogin();
+        }).then(function () {
           dafaSetState('已登入，讀取倉內包裹…');
           return dafaFetchAllPackages(['110', '120', '130']);
         }).then(function (pkgs) {
@@ -2811,7 +2839,7 @@
             var update = {};
             var w = kgOf(p.grossWeight);
             var arrive = p.ibReceiptTime ? parseArrival(p.ibReceiptTime) : null;
-            var cust = p.customerRemark || p.remark || '';
+            var cust = dafaRemarkOf(p);
             if (w != null) { update.weight = w; if (rec) rec.weight = w; }
             if (arrive != null) { update.arrived_date = arrive; if (rec) rec.arrivedDate = arrive; }
             if (cust) { update.remark = cust; if (rec) rec.remark = cust; }
