@@ -1,4 +1,4 @@
-var CACHE_NAME = 'taobao-shipment-v11';
+var CACHE_NAME = 'taobao-shipment-v12';
 var APP_SHELL = [
   './',
   './index.html',
