@@ -511,8 +511,8 @@
   <div class="login-mask" id="editOverlay" style="display:none">
     <div class="login-card">
       <h2>修改包裹</h2>
-      <p>修改後立即同步到共享資料庫，所有使用者看到相同內容。</p>
-      <div class="field">
+      <p id="editHint">修改後立即同步到共享資料庫，所有使用者看到相同內容。</p>
+      <div class="field" id="editNameField">
         <label>姓名</label>
         <input type="text" id="editName" placeholder="例如 俊賢" autocomplete="off" list="editNameList">
         <datalist id="editNameList"></datalist>
@@ -529,11 +529,11 @@
         <label>金額（人民幣）</label>
         <input type="text" id="editAmount" placeholder="例如 100" autocomplete="off">
       </div>
-      <div class="field">
+      <div class="field" id="editWeightField">
         <label>重量（公斤，留空清除）</label>
         <input type="text" id="editWeight" placeholder="例如 0.24" autocomplete="off">
       </div>
-      <div class="field">
+      <div class="field" id="editArrivedField">
         <label>到貨日期（留空清除）</label>
         <input type="text" id="editArrivedDate" placeholder="例如 2024-01-01 或 2024/1/1 10:30" autocomplete="off">
       </div>
@@ -1725,16 +1725,16 @@
 
           var tdAct = document.createElement('td');
           tdAct.className = 'row-actions';
-          if (isAdmin()) {
-            var editBtn = document.createElement('button');
-            editBtn.type = 'button';
-            editBtn.textContent = '修改';
-            editBtn.style.color = 'var(--blue)';
-            editBtn.addEventListener('click', function () {
-              openEditModal(r);
-            });
-            tdAct.appendChild(editBtn);
-          }
+          // 管理員可改任何包裹；一般使用者可改自己「尚未入批次」的包裹（單號／品項／金額）
+          var editBtn = document.createElement('button');
+          editBtn.type = 'button';
+          editBtn.textContent = '修改';
+          editBtn.style.color = 'var(--blue)';
+          if (!canEditRec(r)) { editBtn.disabled = true; editBtn.style.color = ''; editBtn.title = '已在集運批次中，請找管理員處理'; }
+          editBtn.addEventListener('click', function () {
+            openEditModal(r);
+          });
+          tdAct.appendChild(editBtn);
           var delBtn = document.createElement('button');
           delBtn.type = 'button';
           delBtn.textContent = '刪除';
@@ -2356,13 +2356,27 @@
         return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
       }
       function editTarget() { return currentUser && currentUser.editId ? findRec(currentUser.editId) : null; }
+      function canEditRec(r) {
+        if (!r || !currentUser) return false;
+        if (isAdmin()) return true;
+        return r.name === myName() && r.batchId == null && !r.arrived;
+      }
       function openEditModal(r) {
         if (!r) return;
+        if (!canEditRec(r)) { showToast('已在集運批次中，請找管理員處理'); return; }
+        var admin = isAdmin();
         currentUser.editId = r.id;
+        // 一般使用者只能改單號／品項／金額；姓名固定是自己，重量與到貨日由大發同步
+        $('editNameField').style.display = admin ? '' : 'none';
+        $('editWeightField').style.display = admin ? '' : 'none';
+        $('editArrivedField').style.display = admin ? '' : 'none';
+        $('editHint').textContent = admin
+          ? '修改後立即同步到共享資料庫，所有使用者看到相同內容。金額不知道可以先留空。'
+          : '可修改單號、品項與金額。包裹放進集運批次後就不能再改，需請管理員處理。';
         $('editName').value = r.name || '';
         $('editOrderNo').value = r.orderNo || '';
         $('editItem').value = r.item || '';
-        $('editAmount').value = r.amount || '';
+        $('editAmount').value = r.amount != null ? r.amount : '';
         $('editWeight').value = r.weight != null ? r.weight : '';
         $('editArrivedDate').value = fmtArrivalInput(r.arrivedDate);
         $('editError').textContent = '';
@@ -2374,7 +2388,7 @@
           dl.appendChild(o);
         });
         $('editOverlay').style.display = 'flex';
-        $('editName').focus();
+        (admin ? $('editName') : $('editItem')).focus();
       }
       function closeEditModal() {
         $('editOverlay').style.display = 'none';
@@ -2384,14 +2398,17 @@
         var r = editTarget();
         var err = $('editError');
         if (!r) { err.textContent = '找不到這筆包裹'; return; }
-        var name = $('editName').value.trim();
+        var admin = isAdmin();
+        if (!canEditRec(r)) { err.textContent = '這筆包裹已在集運批次中，請找管理員處理'; return; }
+        var name = admin ? $('editName').value.trim() : r.name;
         var orderNo = $('editOrderNo').value.trim();
         var item = $('editItem').value.trim();
         var amount = $('editAmount').value.trim();
-        var weightRaw = $('editWeight').value.trim();
-        var arriveRaw = $('editArrivedDate').value.trim();
-        if (!name || !orderNo || !item || !amount) {
-          err.textContent = '姓名、單號、品項、金額為必填';
+        var weightRaw = admin ? $('editWeight').value.trim() : (r.weight != null ? String(r.weight) : '');
+        var arriveRaw = admin ? $('editArrivedDate').value.trim() : '';
+        // 管理員：金額可留空（同「指定給…」）；一般使用者：金額必填（同申報表單）
+        if (!name || !orderNo || !item || (!admin && !amount)) {
+          err.textContent = admin ? '姓名、單號、品項為必填' : '單號、品項、金額為必填';
           return;
         }
         var weight = null;
@@ -2402,15 +2419,20 @@
         var arriveMs = arriveRaw !== '' ? parseArrival(arriveRaw) : null;
         if (arriveRaw !== '' && arriveMs == null) { err.textContent = '到貨日期格式不正確'; return; }
 
-        var dup = records.find(function (x) { return x.id !== r.id && x.orderNo === orderNo; });
-        if (dup) { err.textContent = '單號 ' + orderNo + ' 已存在（' + dup.name + '）'; return; }
+        var dup = records.find(function (x) { return x.id !== r.id && String(x.orderNo) === orderNo; });
+        if (dup) {
+          err.textContent = dup.name
+            ? '單號 ' + orderNo + ' 已存在（' + dup.name + '）'
+            : '單號 ' + orderNo + ' 已在「待認領包裹」中，請改用認領';
+          return;
+        }
 
-        var update = {
-          name: name, order_no: orderNo, item: item, amount: amount,
-          weight: weight, arrived_date: arriveMs
-        };
-        r.name = name; r.orderNo = orderNo; r.item = item; r.amount = amount;
-        r.weight = weight; r.arrivedDate = arriveMs;
+        var update = { order_no: orderNo, item: item, amount: amount };
+        r.orderNo = orderNo; r.item = item; r.amount = amount;
+        if (admin) {
+          update.name = name; update.weight = weight; update.arrived_date = arriveMs;
+          r.name = name; r.weight = weight; r.arrivedDate = arriveMs;
+        }
         persist(sb.from('records').update(update).eq('id', r.id), '同步失敗：修改包裹');
         closeEditModal();
         cacheSave();
@@ -2436,7 +2458,7 @@
         var admin = isAdmin();
         claimName = admin ? '' : myName();
         $('claimItem').value = r.item || '';
-        $('claimAmount').value = r.amount || '';
+        $('claimAmount').value = r.amount != null ? r.amount : '';
         $('claimError').textContent = '';
         var opts = pendingRecords().map(function (p) {
           return '<option value="' + esc(p.id) + '">' + esc(p.orderNo) + '</option>';
@@ -2445,7 +2467,7 @@
         $('claimOrder').value = r.id;
         $('claimOrder').addEventListener('change', function () {
           var x = findRec(this.value);
-          if (x) { $('claimItem').value = x.item || ''; $('claimAmount').value = x.amount || ''; }
+          if (x) { $('claimItem').value = x.item || ''; $('claimAmount').value = x.amount != null ? x.amount : ''; }
         });
         $('claimTitle').textContent = admin ? '指定包裹給…' : '認領包裹';
         $('claimHint').textContent = admin
@@ -3116,9 +3138,11 @@
             err.textContent = '請完整填寫單號、品項、金額與姓名';
             return;
           }
-          var dup = records.find(function (r) { return r.orderNo === orderNo; });
+          var dup = records.find(function (r) { return String(r.orderNo) === orderNo; });
           if (dup) {
-            err.textContent = '單號 ' + orderNo + ' 已存在（' + dup.name + '，' + fmtTime(dup.time) + '），請確認是否重複';
+            err.textContent = dup.name
+              ? '單號 ' + orderNo + ' 已存在（' + dup.name + '，' + fmtTime(dup.time) + '），請確認是否重複'
+              : '單號 ' + orderNo + ' 已在上方「待認領包裹」中（集運倉已收到），請直接在那裡認領';
             return;
           }
           var rec = {
@@ -3308,13 +3332,18 @@
         if (btnEditCancel) btnEditCancel.addEventListener('click', closeEditModal);
 
         $('editName').addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); $('editOrderNo').focus(); }
+        });
+        $('editOrderNo').addEventListener('keydown', function (e) {
           if (e.key === 'Enter') { e.preventDefault(); $('editItem').focus(); }
         });
         $('editItem').addEventListener('keydown', function (e) {
           if (e.key === 'Enter') { e.preventDefault(); $('editAmount').focus(); }
         });
         $('editAmount').addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') { e.preventDefault(); $('editWeight').focus(); }
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          if (isAdmin()) $('editWeight').focus(); else saveEdit();
         });
         $('editWeight').addEventListener('keydown', function (e) {
           if (e.key === 'Enter') { e.preventDefault(); $('editArrivedDate').focus(); }
